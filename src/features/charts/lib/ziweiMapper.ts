@@ -32,11 +32,43 @@ function readName(input: unknown): string {
   if (typeof input === "string") {
     return input;
   }
-  if (input && typeof input === "object" && "name" in input) {
-    const value = (input as { name?: unknown }).name;
-    return typeof value === "string" ? value : "";
+
+  if (input && typeof input === "object") {
+    const record = input as {
+      name?: unknown;
+      displayName?: unknown;
+      formalName?: unknown;
+      key?: unknown;
+      toString?: () => string;
+    };
+
+    const candidates = [record.displayName, record.formalName, record.name];
+    const named = candidates.find((value) => typeof value === "string" && value.trim().length > 0);
+    if (typeof named === "string") {
+      return named;
+    }
+
+    if (typeof record.toString === "function") {
+      const text = record.toString();
+      if (typeof text === "string" && text !== "[object Object]") {
+        return text;
+      }
+    }
+
+    if (typeof record.key === "string") {
+      return record.key;
+    }
   }
+
   return "";
+}
+
+function isDisplayValueBroken(value: string | null | undefined) {
+  if (!value || !value.trim()) {
+    return true;
+  }
+
+  return /^[A-Z0-9_]+$/.test(value.trim());
 }
 
 function toPlainJson(input: unknown): Record<string, unknown> {
@@ -83,8 +115,13 @@ function normalizeStarList(list: unknown[] | undefined) {
 }
 
 export function mapRawZiweiBoard(board: ZiweiRawBoard): ZiweiMappedBoard {
-  const cells = Array.isArray(board.cells) ? board.cells : [];
-  if (!board.config || cells.length === 0) {
+  const serializedBoard =
+    typeof board.toJSON === "function"
+      ? (board.toJSON() as ZiweiRawBoard)
+      : board;
+
+  const cells = Array.isArray(serializedBoard.cells) ? serializedBoard.cells : [];
+  if (!serializedBoard.config || cells.length === 0) {
     throw new AppError("排盘结果不完整，无法建立命盘快照。", "ZIWEI_BOARD_INCOMPLETE", board);
   }
 
@@ -130,9 +167,9 @@ export function mapRawZiweiBoard(board: ZiweiRawBoard): ZiweiMappedBoard {
   return {
     life_palace_branch: lifePalace?.earthly_branch ?? "",
     body_palace_branch: bodyPalace?.earthly_branch ?? "",
-    life_master_star: readName(board.destinyMaster),
-    body_master_star: readName(board.bodyMaster),
-    five_element_class: readName(board.element),
+    life_master_star: readName(serializedBoard.destinyMaster),
+    body_master_star: readName(serializedBoard.bodyMaster),
+    five_element_class: readName(serializedBoard.element),
     palaces,
     stars: palaces.flatMap((palace) => {
       const cell = palace.palace_snapshot_json;
@@ -175,12 +212,15 @@ export function mapRawZiweiBoard(board: ZiweiRawBoard): ZiweiMappedBoard {
     // 当前版本先把相关原始结构优先保存在 snapshot_json 中，保证展示与持久化稳定。
     transforms: [],
     snapshot: {
-      config: toPlainJson(board.config),
-      element: readName(board.element),
-      destinyMaster: readName(board.destinyMaster),
-      bodyMaster: readName(board.bodyMaster),
+      config: toPlainJson(serializedBoard.config),
+      element: readName(serializedBoard.element),
+      destinyMaster: readName(serializedBoard.destinyMaster),
+      bodyMaster: readName(serializedBoard.bodyMaster),
       cells: cells.map((cell) => toPlainJson(cell)),
-      bornStarDerivativeMap: toPlainJson((board as Record<string, unknown>).bornStarDerivativeMap),
+      bornStarDerivativeMap: toPlainJson(
+        (serializedBoard as Record<string, unknown>).bornStarDerivativeMap ??
+          (board as Record<string, unknown>).bornStarDerivativeMap,
+      ),
       runtimeContextPreview: null,
     },
   };
@@ -279,4 +319,76 @@ export function buildChartAggregate(
 
 export function toZiweiCreateConfigInput(input: ChartCreateInput): ZiweiCreateConfigInput {
   return { ...input };
+}
+
+function readSnapshotCellList(snapshot: Record<string, unknown>, key: string) {
+  const value = snapshot[key];
+  return Array.isArray(value) ? normalizeStarList(value) : [];
+}
+
+function repairPalaceRecord(palace: ChartPalaceRecord): ChartPalaceRecord {
+  const snapshot = palace.palace_snapshot_json;
+  const temples = Array.isArray(snapshot.temples)
+    ? snapshot.temples.map(readName).map(normalizeTempleName).filter(Boolean)
+    : [];
+  const majorStars = readSnapshotCellList(snapshot, "majorStars").map((item) => item.star_name);
+  const minorStars = [
+    ...readSnapshotCellList(snapshot, "minorStars"),
+    ...readSnapshotCellList(snapshot, "miniStars"),
+  ].map((item) => item.star_name);
+  const miscStars = readSnapshotCellList(snapshot, "miscStars").map((item) => item.star_name);
+
+  return {
+    ...palace,
+    palace_name: palace.palace_name || temples[0] || palace.palace_code,
+    earthly_branch: palace.earthly_branch || readName(snapshot.ground),
+    heavenly_stem: palace.heavenly_stem || readName(snapshot.sky),
+    is_body_palace: palace.is_body_palace || temples.includes("身宫"),
+    major_stars_summary:
+      palace.major_stars_summary.length > 0 && !palace.major_stars_summary.every(isDisplayValueBroken)
+        ? palace.major_stars_summary
+        : majorStars,
+    minor_stars_summary:
+      palace.minor_stars_summary.length > 0 && !palace.minor_stars_summary.every(isDisplayValueBroken)
+        ? palace.minor_stars_summary
+        : minorStars,
+    sha_stars_summary:
+      palace.sha_stars_summary.length > 0 && !palace.sha_stars_summary.every(isDisplayValueBroken)
+        ? palace.sha_stars_summary
+        : miscStars,
+  };
+}
+
+export function repairChartRecordDisplay(chart: ChartRecord, palaces: ChartPalaceRecord[] = []): ChartRecord {
+  const snapshot = chart.snapshot_json;
+  const lifePalace = palaces.find((item) => item.palace_name === "命宫" || item.palace_code === "life");
+  const bodyPalace = palaces.find((item) => item.is_body_palace || item.palace_name === "身宫" || item.palace_code === "body");
+
+  return {
+    ...chart,
+    life_palace_branch: !isDisplayValueBroken(chart.life_palace_branch)
+      ? chart.life_palace_branch
+      : lifePalace?.earthly_branch ?? chart.life_palace_branch,
+    body_palace_branch: !isDisplayValueBroken(chart.body_palace_branch)
+      ? chart.body_palace_branch
+      : bodyPalace?.earthly_branch ?? chart.body_palace_branch,
+    life_master_star: !isDisplayValueBroken(chart.life_master_star)
+      ? chart.life_master_star
+      : readName(snapshot.destinyMaster),
+    body_master_star: !isDisplayValueBroken(chart.body_master_star)
+      ? chart.body_master_star
+      : readName(snapshot.bodyMaster),
+    five_element_class: !isDisplayValueBroken(chart.five_element_class)
+      ? chart.five_element_class
+      : readName(snapshot.element),
+  };
+}
+
+export function repairChartAggregateDisplay(aggregate: ChartAggregate): ChartAggregate {
+  const palaces = aggregate.palaces.map(repairPalaceRecord);
+  return {
+    ...aggregate,
+    chart: repairChartRecordDisplay(aggregate.chart, palaces),
+    palaces,
+  };
 }

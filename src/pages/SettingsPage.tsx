@@ -4,11 +4,13 @@ import { useForm } from "react-hook-form";
 import { CardSection } from "@/components/ui/CardSection";
 import { FieldError } from "@/components/ui/FieldError";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { createDemoCaseSeed } from "@/db/init";
 import { ruleFormSchema, type RuleFormValues } from "@/features/rules/schemas/ruleSchema";
 import { ruleService } from "@/features/rules/services/ruleService";
 import { exportService } from "@/features/settings/services/exportService";
 import { tagFormSchema, type TagFormValues } from "@/features/tags/schemas/tagSchema";
 import { tagService } from "@/features/tags/services/tagService";
+import { AppError } from "@/lib/errors";
 import type { RuleHintRecord, TagRecord } from "@/types";
 
 const defaultTagValues: TagFormValues = {
@@ -40,6 +42,8 @@ export function SettingsPage() {
   const [rules, setRules] = useState<RuleHintRecord[]>([]);
   const [selectedTag, setSelectedTag] = useState<TagRecord | null>(null);
   const [selectedRule, setSelectedRule] = useState<RuleHintRecord | null>(null);
+  const [demoSeedMessage, setDemoSeedMessage] = useState("");
+  const [isCreatingDemoSeed, setIsCreatingDemoSeed] = useState(false);
 
   const tagForm = useForm<TagFormValues>({
     resolver: zodResolver(tagFormSchema),
@@ -93,6 +97,25 @@ export function SettingsPage() {
     setSelectedRule(null);
     await load();
   });
+
+  async function handleCreateDemoSeed() {
+    setDemoSeedMessage("");
+    setIsCreatingDemoSeed(true);
+
+    try {
+      const result = await createDemoCaseSeed();
+      setDemoSeedMessage(`已生成示例数据：${result.subjectName}`);
+    } catch (error) {
+      console.error("Failed to create demo seed", error);
+      const message =
+        error instanceof AppError || error instanceof Error
+          ? error.message
+          : "示例数据生成失败，请查看控制台日志。";
+      setDemoSeedMessage(`示例数据生成失败：${message}`);
+    } finally {
+      setIsCreatingDemoSeed(false);
+    }
+  }
 
   const watchedStarNames = ruleForm.watch("trigger_expression.starNames") ?? [];
 
@@ -337,19 +360,36 @@ export function SettingsPage() {
 
       <CardSection
         title="数据导出"
-        description="支持导出全部本地数据为 JSON；单案例导出在详情页操作。"
+        description="支持导出全部本地数据，也可以手动追加一条示例命盘案例用于演示。"
       >
-        <button
-          type="button"
-          onClick={() => {
-            exportService.exportAll().catch((error) => {
-              console.error("Failed to export all data", error);
-            });
-          }}
-          className="rounded-2xl bg-ink px-4 py-3 text-sm text-white"
-        >
-          导出全部数据 JSON
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              exportService.exportAll().catch((error) => {
+                console.error("Failed to export all data", error);
+              });
+            }}
+            className="rounded-2xl bg-ink px-4 py-3 text-sm text-white"
+          >
+            导出全部数据 JSON
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              handleCreateDemoSeed().catch((error) => {
+                console.error(error);
+              });
+            }}
+            disabled={isCreatingDemoSeed}
+            className="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700 disabled:opacity-60"
+          >
+            {isCreatingDemoSeed ? "生成中..." : "手动生成示例数据"}
+          </button>
+        </div>
+        {demoSeedMessage ? (
+          <p className="mt-3 text-sm text-slate-600">{demoSeedMessage}</p>
+        ) : null}
       </CardSection>
     </div>
   );

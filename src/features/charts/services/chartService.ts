@@ -3,6 +3,8 @@ import { createRawZiweiBoard } from "@/features/charts/lib/ziweiEngine";
 import {
   buildChartAggregate,
   mapRawZiweiBoard,
+  repairChartAggregateDisplay,
+  repairChartRecordDisplay,
   toZiweiCreateConfigInput,
 } from "@/features/charts/lib/ziweiMapper";
 import type { ChartCreateInput } from "@/types";
@@ -17,15 +19,18 @@ export class ChartService {
   }
 
   async getChartAggregate(chartId: string) {
-    return chartRepository.getChartAggregate(chartId);
+    const aggregate = await chartRepository.getChartAggregate(chartId);
+    return aggregate ? repairChartAggregateDisplay(aggregate) : null;
   }
 
   async listRecentCharts(limit?: number) {
-    return chartRepository.listRecentCharts(limit);
+    const charts = await chartRepository.listRecentCharts(limit);
+    return charts.map((chart) => repairChartRecordDisplay(chart));
   }
 
   async listChartsByIds(ids: string[]) {
-    return chartRepository.listChartsByIds(ids);
+    const charts = await chartRepository.listChartsByIds(ids);
+    return charts.map((chart) => repairChartRecordDisplay(chart));
   }
 }
 

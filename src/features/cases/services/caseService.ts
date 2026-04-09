@@ -5,6 +5,7 @@ import { ruleRepository } from "@/db/repositories/ruleRepository";
 import { chartRepository } from "@/db/repositories/chartRepository";
 import { dayjs } from "@/lib/dayjs";
 import { evaluateRuleHints } from "@/features/rules/lib/ruleMatcher";
+import { chartService } from "@/features/charts/services/chartService";
 import type {
   CaseEventRecord,
   CaseNoteRecord,
@@ -154,7 +155,7 @@ export class CaseService {
     if (!caseRecord) {
       return [];
     }
-    const aggregate = await chartRepository.getChartAggregate(caseRecord.chart_id);
+    const aggregate = await chartService.getChartAggregate(caseRecord.chart_id);
     if (!aggregate) {
       return [];
     }

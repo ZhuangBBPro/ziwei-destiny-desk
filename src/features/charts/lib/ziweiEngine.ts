@@ -5,8 +5,48 @@ import type {
   ZiweiLibraryBridge,
   ZiweiRawBoard,
 } from "@/features/charts/lib/ziweiTypes";
+import fortelBundleUrl from "fortel-ziweidoushu/dist/bundle.js?url";
 
 let cachedBridge: ZiweiLibraryBridge | null = null;
+let browserBundlePromise: Promise<ZiweiLibraryBridge> | null = null;
+
+function getBrowserGlobalBridge() {
+  return (globalThis as Record<string, unknown>)["fortel-ziweidoushu"] as
+    | ZiweiLibraryBridge
+    | undefined;
+}
+
+async function loadBrowserBundleBridge(): Promise<ZiweiLibraryBridge> {
+  const existing = getBrowserGlobalBridge();
+  if (existing) {
+    return existing;
+  }
+
+  if (!browserBundlePromise) {
+    browserBundlePromise = new Promise<ZiweiLibraryBridge>((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = fortelBundleUrl;
+      script.async = true;
+
+      script.onload = () => {
+        const bridge = getBrowserGlobalBridge();
+        if (bridge) {
+          resolve(bridge);
+          return;
+        }
+        reject(new Error("fortel-ziweidoushu browser bundle loaded but global export was not found"));
+      };
+
+      script.onerror = () => {
+        reject(new Error("Failed to load fortel-ziweidoushu browser bundle"));
+      };
+
+      document.head.appendChild(script);
+    });
+  }
+
+  return browserBundlePromise;
+}
 
 async function loadZiweiBridge(): Promise<ZiweiLibraryBridge> {
   if (cachedBridge) {
@@ -14,7 +54,10 @@ async function loadZiweiBridge(): Promise<ZiweiLibraryBridge> {
   }
 
   try {
-    const mod = (await import("fortel-ziweidoushu")) as unknown as ZiweiLibraryBridge;
+    const mod =
+      typeof window !== "undefined"
+        ? await loadBrowserBundleBridge()
+        : ((await import("fortel-ziweidoushu")) as unknown as ZiweiLibraryBridge);
     cachedBridge = mod;
     return mod;
   } catch (error) {

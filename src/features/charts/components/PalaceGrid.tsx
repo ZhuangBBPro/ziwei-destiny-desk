@@ -81,9 +81,27 @@ function readName(value: unknown) {
   if (typeof value === "string") {
     return value;
   }
-  if (value && typeof value === "object" && "name" in value) {
-    const maybeName = (value as { name?: unknown }).name;
-    return typeof maybeName === "string" ? maybeName : "";
+  if (value && typeof value === "object") {
+    const record = value as {
+      name?: unknown;
+      displayName?: unknown;
+      formalName?: unknown;
+      toString?: () => string;
+    };
+
+    const maybeName =
+      [record.displayName, record.formalName, record.name].find(
+        (item) => typeof item === "string" && item.trim().length > 0,
+      ) ?? "";
+
+    if (typeof maybeName === "string" && maybeName) {
+      return maybeName;
+    }
+
+    if (typeof record.toString === "function") {
+      const text = record.toString();
+      return text !== "[object Object]" ? text : "";
+    }
   }
   return "";
 }
