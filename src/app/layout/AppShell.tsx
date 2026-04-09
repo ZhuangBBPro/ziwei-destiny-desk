@@ -1,0 +1,47 @@
+import { NavLink, Outlet } from "react-router-dom";
+
+const navItems = [
+  { to: "/", label: "Dashboard", end: true },
+  { to: "/charts/new", label: "新建命盘" },
+  { to: "/cases", label: "案例库" },
+  { to: "/settings", label: "设置" },
+];
+
+export function AppShell() {
+  return (
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(182,134,44,0.16),_transparent_35%),linear-gradient(180deg,_#faf6ef_0%,_#f4ede1_100%)] text-ink">
+      <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-4 md:px-6 lg:flex-row lg:gap-6 lg:px-8">
+        <aside className="mb-4 rounded-3xl border border-white/60 bg-white/75 p-4 shadow-panel backdrop-blur lg:mb-0 lg:w-72 lg:p-6">
+          <div className="mb-8">
+            <p className="font-serif text-2xl text-lacquer">Ziwei Destiny Desk</p>
+            <p className="mt-2 text-sm text-slate-600">
+              本地优先的紫微斗数命盘工作台
+            </p>
+          </div>
+          <nav className="space-y-2">
+            {navItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  [
+                    "block rounded-2xl px-4 py-3 text-sm transition",
+                    isActive
+                      ? "bg-ink text-white shadow-sm"
+                      : "bg-slate-50 text-slate-700 hover:bg-slate-100",
+                  ].join(" ")
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+        </aside>
+        <main className="flex-1">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
+}

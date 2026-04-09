@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#7e2c2c" />
+    <title>Ziwei Destiny Desk - Offline</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: "Noto Sans SC", "PingFang SC", system-ui, sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(182, 134, 44, 0.18), transparent 35%),
+          linear-gradient(180deg, #faf6ef 0%, #f4ede1 100%);
+        color: #1f2937;
+      }
+
+      main {
+        width: min(92vw, 520px);
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        border-radius: 28px;
+        padding: 28px;
+        background: rgba(255, 255, 255, 0.86);
+        box-shadow: 0 16px 40px rgba(31, 41, 55, 0.08);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 28px;
+        color: #7e2c2c;
+      }
+
+      p {
+        line-height: 1.8;
+        font-size: 14px;
+      }
+
+      button {
+        border: 0;
+        border-radius: 16px;
+        background: #1f2937;
+        color: #fff;
+        padding: 12px 16px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>当前处于离线状态</h1>
+      <p>
+        已缓存的页面和本地 IndexedDB 数据仍可继续使用。若你刚刚首次打开此站点，请重新联网访问一次以缓存完整资源。
+      </p>
+      <button type="button" onclick="window.location.reload()">重新尝试加载</button>
+    </main>
+  </body>
+</html>

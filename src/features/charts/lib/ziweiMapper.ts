@@ -1,0 +1,282 @@
+import { v4 as uuidv4 } from "uuid";
+import { dayjs } from "@/lib/dayjs";
+import { APP_CHART_SYSTEM, APP_CHART_VERSION } from "@/lib/constants";
+import { AppError } from "@/lib/errors";
+import type {
+  ChartAggregate,
+  ChartCreateInput,
+  ChartPalaceRecord,
+  ChartRecord,
+  ChartStarRecord,
+  ChartTransformRecord,
+} from "@/types";
+import type { ZiweiCreateConfigInput, ZiweiMappedBoard, ZiweiRawBoard } from "@/features/charts/lib/ziweiTypes";
+
+const TEMPLE_CODE_MAP: Record<string, string> = {
+  命宫: "life",
+  身宫: "body",
+  兄弟: "siblings",
+  夫妻: "marriage",
+  子女: "children",
+  财帛: "wealth",
+  疾厄: "health",
+  迁移: "travel",
+  交友: "friends",
+  事业: "career",
+  田宅: "property",
+  福德: "fortune",
+  父母: "parents",
+};
+
+function readName(input: unknown): string {
+  if (typeof input === "string") {
+    return input;
+  }
+  if (input && typeof input === "object" && "name" in input) {
+    const value = (input as { name?: unknown }).name;
+    return typeof value === "string" ? value : "";
+  }
+  return "";
+}
+
+function toPlainJson(input: unknown): Record<string, unknown> {
+  if (input === null || input === undefined) {
+    return {};
+  }
+  return JSON.parse(
+    JSON.stringify(input, (_, value) => {
+      if (value instanceof Map) {
+        return Object.fromEntries(value);
+      }
+      return value;
+    }),
+  ) as Record<string, unknown>;
+}
+
+function normalizeTempleName(input: string) {
+  return input.replace("宮", "宫");
+}
+
+function normalizeStarList(list: unknown[] | undefined) {
+  if (!Array.isArray(list)) {
+    return [];
+  }
+
+  return list.map((item) => {
+    if (typeof item === "string") {
+      return { star_name: item, brightness_level: null, transform_type: null };
+    }
+
+    const record = item as Record<string, unknown>;
+    return {
+      star_name:
+        readName(record.name) ||
+        readName(record.star) ||
+        String(record.key ?? record.name ?? "未知星曜"),
+      brightness_level:
+        typeof record.brightness === "number" || typeof record.brightness === "string"
+          ? String(record.brightness)
+          : null,
+      transform_type: readName(record.derivative) || readName(record.transform) || null,
+    };
+  });
+}
+
+export function mapRawZiweiBoard(board: ZiweiRawBoard): ZiweiMappedBoard {
+  const cells = Array.isArray(board.cells) ? board.cells : [];
+  if (!board.config || cells.length === 0) {
+    throw new AppError("排盘结果不完整，无法建立命盘快照。", "ZIWEI_BOARD_INCOMPLETE", board);
+  }
+
+  const palaces = cells.flatMap((cell, index) => {
+    const temples = Array.isArray(cell.temples) ? cell.temples.map(readName).map(normalizeTempleName) : [];
+    const majorStars = normalizeStarList(cell.majorStars);
+    const minorStars = normalizeStarList(cell.minorStars);
+    const miniStars = normalizeStarList(cell.miniStars);
+    const miscStars = normalizeStarList(cell.miscStars);
+    const earthly_branch = readName(cell.ground) || "";
+    const heavenly_stem = readName(cell.sky) || "";
+    const is_body_palace = temples.some((item) => item === "身宫");
+
+    return temples.map((templeName) => ({
+      palace_code: TEMPLE_CODE_MAP[templeName] ?? templeName,
+      palace_name: templeName,
+      earthly_branch,
+      heavenly_stem,
+      is_body_palace,
+      major_stars_summary: majorStars.map((item) => item.star_name),
+      minor_stars_summary: [...minorStars, ...miniStars].map((item) => item.star_name),
+      sha_stars_summary: miscStars.map((item) => item.star_name),
+      display_order: index,
+      palace_snapshot_json: toPlainJson({
+        sky: cell.sky,
+        ground: cell.ground,
+        temples: cell.temples,
+        majorStars: cell.majorStars,
+        minorStars: cell.minorStars,
+        miniStars: cell.miniStars,
+        miscStars: cell.miscStars,
+        ageStart: cell.ageStart,
+        ageEnd: cell.ageEnd,
+        ageRange: cell.ageRange,
+        lifeStage: cell.lifeStage,
+      }),
+    }));
+  });
+
+  const lifePalace = palaces.find((item) => item.palace_name === "命宫");
+  const bodyPalace = palaces.find((item) => item.is_body_palace);
+
+  return {
+    life_palace_branch: lifePalace?.earthly_branch ?? "",
+    body_palace_branch: bodyPalace?.earthly_branch ?? "",
+    life_master_star: readName(board.destinyMaster),
+    body_master_star: readName(board.bodyMaster),
+    five_element_class: readName(board.element),
+    palaces,
+    stars: palaces.flatMap((palace) => {
+      const cell = palace.palace_snapshot_json;
+      return [
+        ...normalizeStarList(cell.majorStars as unknown[] | undefined).map((star) => ({
+          palace_code: palace.palace_code,
+          star_name: star.star_name,
+          star_category: "major" as const,
+          brightness_level: star.brightness_level,
+          transform_type: star.transform_type,
+          notes: "",
+        })),
+        ...normalizeStarList(cell.minorStars as unknown[] | undefined).map((star) => ({
+          palace_code: palace.palace_code,
+          star_name: star.star_name,
+          star_category: "minor" as const,
+          brightness_level: star.brightness_level,
+          transform_type: star.transform_type,
+          notes: "",
+        })),
+        ...normalizeStarList(cell.miniStars as unknown[] | undefined).map((star) => ({
+          palace_code: palace.palace_code,
+          star_name: star.star_name,
+          star_category: "mini" as const,
+          brightness_level: star.brightness_level,
+          transform_type: star.transform_type,
+          notes: "",
+        })),
+        ...normalizeStarList(cell.miscStars as unknown[] | undefined).map((star) => ({
+          palace_code: palace.palace_code,
+          star_name: star.star_name,
+          star_category: "misc" as const,
+          brightness_level: star.brightness_level,
+          transform_type: star.transform_type,
+          notes: "",
+        })),
+      ];
+    }),
+    // TODO: fortel-ziweidoushu 的四化结构待在实际安装包导出与运行结果确认后进一步拆表。
+    // 当前版本先把相关原始结构优先保存在 snapshot_json 中，保证展示与持久化稳定。
+    transforms: [],
+    snapshot: {
+      config: toPlainJson(board.config),
+      element: readName(board.element),
+      destinyMaster: readName(board.destinyMaster),
+      bodyMaster: readName(board.bodyMaster),
+      cells: cells.map((cell) => toPlainJson(cell)),
+      bornStarDerivativeMap: toPlainJson((board as Record<string, unknown>).bornStarDerivativeMap),
+      runtimeContextPreview: null,
+    },
+  };
+}
+
+export function buildChartAggregate(
+  input: ChartCreateInput,
+  mappedBoard: ZiweiMappedBoard,
+): ChartAggregate {
+  const now = dayjs().toISOString();
+  const chartId = uuidv4();
+
+  const chart: ChartRecord = {
+    id: chartId,
+    subject_name: input.subject_name,
+    gender: input.gender,
+    birth_calendar_type: input.birth_calendar_type,
+    birth_date: input.birth_date,
+    birth_time: input.birth_time,
+    birth_timezone: input.birth_timezone,
+    birth_location: input.birth_location,
+    leap_month_flag: input.leap_month_flag,
+    true_solar_time_enabled: input.true_solar_time_enabled,
+    chart_system: APP_CHART_SYSTEM,
+    chart_version: APP_CHART_VERSION,
+    life_palace_branch: mappedBoard.life_palace_branch,
+    body_palace_branch: mappedBoard.body_palace_branch,
+    life_master_star: mappedBoard.life_master_star,
+    body_master_star: mappedBoard.body_master_star,
+    five_element_class: mappedBoard.five_element_class,
+    snapshot_json: toPlainJson(mappedBoard.snapshot),
+    raw_input_json: toPlainJson(input),
+    remarks: input.remarks,
+    created_at: now,
+    updated_at: now,
+    archived_at: null,
+  };
+
+  const palaceIdByCode = new Map<string, string>();
+
+  const palaces: ChartPalaceRecord[] = mappedBoard.palaces.map((palace) => {
+    const id = uuidv4();
+    palaceIdByCode.set(palace.palace_code, id);
+    return {
+      id,
+      chart_id: chartId,
+      palace_code: palace.palace_code,
+      palace_name: palace.palace_name,
+      earthly_branch: palace.earthly_branch,
+      heavenly_stem: palace.heavenly_stem,
+      is_body_palace: palace.is_body_palace,
+      major_stars_summary: palace.major_stars_summary,
+      minor_stars_summary: palace.minor_stars_summary,
+      sha_stars_summary: palace.sha_stars_summary,
+      palace_snapshot_json: palace.palace_snapshot_json,
+      display_order: palace.display_order,
+      created_at: now,
+      updated_at: now,
+    };
+  });
+
+  const stars: ChartStarRecord[] = mappedBoard.stars.map((star) => ({
+    id: uuidv4(),
+    chart_id: chartId,
+    palace_id: palaceIdByCode.get(star.palace_code) ?? "",
+    star_name: star.star_name,
+    star_category: star.star_category,
+    brightness_level: star.brightness_level,
+    transform_type: star.transform_type,
+    is_natal: true,
+    notes: star.notes,
+    created_at: now,
+    updated_at: now,
+  }));
+
+  const transforms: ChartTransformRecord[] = mappedBoard.transforms.map((item) => ({
+    id: uuidv4(),
+    chart_id: chartId,
+    transform_type: item.transform_type,
+    star_name: item.star_name,
+    source_scope: item.source_scope,
+    target_palace_code: item.target_palace_code,
+    source_heavenly_stem: item.source_heavenly_stem,
+    payload_json: item.payload_json,
+    created_at: now,
+    updated_at: now,
+  }));
+
+  return {
+    chart,
+    palaces,
+    stars,
+    transforms,
+  };
+}
+
+export function toZiweiCreateConfigInput(input: ChartCreateInput): ZiweiCreateConfigInput {
+  return { ...input };
+}
