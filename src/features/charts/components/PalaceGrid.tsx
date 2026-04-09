@@ -57,7 +57,7 @@ function PalaceCard({ palace }: { palace: ChartPalaceRecord }) {
         <div>
           <p className="text-xs uppercase tracking-wide text-slate-400">主星</p>
           <p className="mt-1 text-slate-700">
-            {palace.major_stars_summary.join("、") || "暂无"}
+            {palace.major_stars_summary.join("、") || "空宫（无十四主星）"}
           </p>
         </div>
         <div>
