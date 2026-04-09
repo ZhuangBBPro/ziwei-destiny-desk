@@ -453,7 +453,7 @@ export function ChartDetailPage() {
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(360px,430px)]">
+      <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.95fr)_320px] xl:grid-cols-[minmax(0,1.8fr)_300px]">
         <div className="space-y-5">
           <ProfessionalPalaceBoard
             chart={aggregate.chart}

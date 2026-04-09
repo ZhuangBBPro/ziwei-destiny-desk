@@ -10,10 +10,10 @@ const navItems = [
 export function AppShell() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(182,134,44,0.16),_transparent_35%),linear-gradient(180deg,_#faf6ef_0%,_#f4ede1_100%)] text-ink">
-      <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-4 md:px-6 lg:flex-row lg:gap-6 lg:px-8">
-        <aside className="mb-4 rounded-3xl border border-white/60 bg-white/75 p-4 shadow-panel backdrop-blur lg:mb-0 lg:w-72 lg:p-6">
+      <div className="mx-auto flex min-h-screen max-w-[1760px] flex-col px-3 py-3 md:px-4 lg:flex-row lg:gap-4 lg:px-5 xl:gap-5 xl:px-6">
+        <aside className="mb-4 rounded-3xl border border-white/60 bg-white/75 p-4 shadow-panel backdrop-blur lg:mb-0 lg:w-52 lg:p-5 xl:w-56">
           <div className="mb-8">
-            <p className="font-serif text-2xl text-lacquer">Ziwei Destiny Desk</p>
+            <p className="font-serif text-xl text-lacquer xl:text-2xl">Ziwei Destiny Desk</p>
             <p className="mt-2 text-sm text-slate-600">
               本地优先的紫微斗数命盘工作台
             </p>
@@ -38,7 +38,7 @@ export function AppShell() {
             ))}
           </nav>
         </aside>
-        <main className="flex-1">
+        <main className="min-w-0 flex-1">
           <Outlet />
         </main>
       </div>
