@@ -89,6 +89,11 @@ interface PalaceBounds {
   centerY: number;
 }
 
+const BOARD_CENTER = {
+  x: 2,
+  y: 2,
+};
+
 export function ProfessionalPalaceBoard({
   chart,
   palaces,
@@ -655,12 +660,12 @@ function getDefaultTriangleLines(
     { palace: triadB, tone: "triangle" as const },
   ].flatMap((item) => {
     const targetBounds = getPalaceBounds(item.palace);
-    const edgePoints = targetBounds ? getEdgeConnectionPoints(baseBounds, targetBounds) : null;
-    return edgePoints
+    const connectionPoints = targetBounds ? getCornerConnectionPoints(baseBounds, targetBounds) : null;
+    return connectionPoints
       ? [
           {
-            from: edgePoints.from,
-            to: edgePoints.to,
+            from: connectionPoints.from,
+            to: connectionPoints.to,
             tone: item.tone,
           },
         ]
@@ -696,25 +701,38 @@ function getPalaceBounds(palace: ChartPalaceRecord | undefined): PalaceBounds | 
   };
 }
 
-function getEdgeConnectionPoints(from: PalaceBounds, to: PalaceBounds) {
-  const dx = to.centerX - from.centerX;
-  const dy = to.centerY - from.centerY;
-  const fromScaleX = dx === 0 ? Number.POSITIVE_INFINITY : Math.abs(0.5 / dx);
-  const fromScaleY = dy === 0 ? Number.POSITIVE_INFINITY : Math.abs(0.5 / dy);
-  const toScaleX = dx === 0 ? Number.POSITIVE_INFINITY : Math.abs(0.5 / dx);
-  const toScaleY = dy === 0 ? Number.POSITIVE_INFINITY : Math.abs(0.5 / dy);
-  const fromScale = Math.min(fromScaleX, fromScaleY);
-  const toScale = Math.min(toScaleX, toScaleY);
+function getCornerConnectionPoints(from: PalaceBounds, to: PalaceBounds) {
+  return {
+    from: getInnerAnchorPoint(from),
+    to: getInnerAnchorPoint(to),
+  };
+}
+
+function getInnerAnchorPoint(bounds: PalaceBounds) {
+  const isLeftEdge = bounds.left === 0;
+  const isRightEdge = bounds.right === 4;
+  const isTopEdge = bounds.top === 0;
+  const isBottomEdge = bounds.bottom === 4;
+  const isCorner = (isLeftEdge || isRightEdge) && (isTopEdge || isBottomEdge);
+
+  if (!isCorner) {
+    if (isLeftEdge) {
+      return { x: bounds.right, y: bounds.centerY };
+    }
+    if (isRightEdge) {
+      return { x: bounds.left, y: bounds.centerY };
+    }
+    if (isTopEdge) {
+      return { x: bounds.centerX, y: bounds.bottom };
+    }
+    if (isBottomEdge) {
+      return { x: bounds.centerX, y: bounds.top };
+    }
+  }
 
   return {
-    from: {
-      x: from.centerX + dx * fromScale,
-      y: from.centerY + dy * fromScale,
-    },
-    to: {
-      x: to.centerX - dx * toScale,
-      y: to.centerY - dy * toScale,
-    },
+    x: bounds.centerX < BOARD_CENTER.x ? bounds.right : bounds.left,
+    y: bounds.centerY < BOARD_CENTER.y ? bounds.bottom : bounds.top,
   };
 }
 
