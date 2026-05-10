@@ -10,7 +10,7 @@ interface ProfessionalPalaceBoardProps {
   onSelectPalace: (palaceCode: string) => void;
 }
 
-const RING_GRID_AREAS = [
+const FALLBACK_GRID_AREAS = [
   "1 / 1 / 2 / 2",
   "1 / 2 / 2 / 3",
   "1 / 3 / 2 / 4",
@@ -24,6 +24,21 @@ const RING_GRID_AREAS = [
   "3 / 1 / 4 / 2",
   "2 / 1 / 3 / 2",
 ] as const;
+
+const BRANCH_GRID_AREAS: Record<string, string> = {
+  巳: "1 / 1 / 2 / 2",
+  午: "1 / 2 / 2 / 3",
+  未: "1 / 3 / 2 / 4",
+  申: "1 / 4 / 2 / 5",
+  辰: "2 / 1 / 3 / 2",
+  酉: "2 / 4 / 3 / 5",
+  卯: "3 / 1 / 4 / 2",
+  戌: "3 / 4 / 4 / 5",
+  寅: "4 / 1 / 5 / 2",
+  丑: "4 / 2 / 5 / 3",
+  子: "4 / 3 / 5 / 4",
+  亥: "4 / 4 / 5 / 5",
+};
 
 const VIEW_MODE_LABEL: Record<BoardViewMode, string> = {
   natal: "本命盘",
@@ -43,7 +58,7 @@ export function ProfessionalPalaceBoard({
   viewMode,
   onSelectPalace,
 }: ProfessionalPalaceBoardProps) {
-  const orderedPalaces = [...palaces].sort((a, b) => a.display_order - b.display_order);
+  const orderedPalaces = normalizeNatalPalaces(palaces);
   const selectedPalace =
     orderedPalaces.find((palace) => palace.palace_code === selectedPalaceCode) ?? orderedPalaces[0];
   const transformEntries = readTransformEntries(chart.snapshot_json);
@@ -74,7 +89,7 @@ export function ProfessionalPalaceBoard({
               <button
                 key={palace.id}
                 type="button"
-                style={{ gridArea: RING_GRID_AREAS[index] }}
+                style={{ gridArea: BRANCH_GRID_AREAS[palace.earthly_branch] ?? FALLBACK_GRID_AREAS[index] }}
                 onClick={() => onSelectPalace(palace.palace_code)}
                 className={buildPalaceCardClass({
                   isSelected: palace.palace_code === selectedPalace?.palace_code,
@@ -508,4 +523,31 @@ function getHighlightedPalaces(
   }
 
   return map;
+}
+
+function normalizeNatalPalaces(palaces: ChartPalaceRecord[]) {
+  const bodyPalaces = palaces.filter(
+    (palace) => palace.palace_code === "body" || palace.palace_name === "身宫",
+  );
+  const natalPalaces = palaces
+    .filter((palace) => palace.palace_code !== "body" && palace.palace_name !== "身宫")
+    .map((palace) => {
+      const matchingBodyPalace = bodyPalaces.find(
+        (bodyPalace) =>
+          bodyPalace.display_order === palace.display_order ||
+          (
+            bodyPalace.earthly_branch &&
+            bodyPalace.earthly_branch === palace.earthly_branch
+          ),
+      );
+
+      return matchingBodyPalace
+        ? {
+            ...palace,
+            is_body_palace: true,
+          }
+        : palace;
+    });
+
+  return natalPalaces.sort((a, b) => a.display_order - b.display_order);
 }

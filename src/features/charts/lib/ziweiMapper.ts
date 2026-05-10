@@ -14,7 +14,6 @@ import type { ZiweiCreateConfigInput, ZiweiMappedBoard, ZiweiRawBoard } from "@/
 
 const TEMPLE_CODE_MAP: Record<string, string> = {
   命宫: "life",
-  身宫: "body",
   兄弟: "siblings",
   夫妻: "marriage",
   子女: "children",
@@ -27,6 +26,8 @@ const TEMPLE_CODE_MAP: Record<string, string> = {
   福德: "fortune",
   父母: "parents",
 };
+
+const BODY_TEMPLE_NAME = "身宫";
 
 function readName(input: unknown): string {
   if (typeof input === "string") {
@@ -135,7 +136,9 @@ export function mapRawZiweiBoard(board: ZiweiRawBoard): ZiweiMappedBoard {
     const heavenly_stem = readName(cell.sky) || "";
     const is_body_palace = temples.some((item) => item === "身宫");
 
-    return temples.map((templeName) => ({
+    const natalTemples = temples.filter((templeName) => templeName !== BODY_TEMPLE_NAME);
+
+    return natalTemples.map((templeName) => ({
       palace_code: TEMPLE_CODE_MAP[templeName] ?? templeName,
       palace_name: templeName,
       earthly_branch,
@@ -340,7 +343,10 @@ function repairPalaceRecord(palace: ChartPalaceRecord): ChartPalaceRecord {
 
   return {
     ...palace,
-    palace_name: palace.palace_name || temples[0] || palace.palace_code,
+    palace_name:
+      palace.palace_name === BODY_TEMPLE_NAME
+        ? temples.find((temple) => temple !== BODY_TEMPLE_NAME) ?? palace.palace_name
+        : palace.palace_name || temples.find((temple) => temple !== BODY_TEMPLE_NAME) || palace.palace_code,
     earthly_branch: palace.earthly_branch || readName(snapshot.ground),
     heavenly_stem: palace.heavenly_stem || readName(snapshot.sky),
     is_body_palace: palace.is_body_palace || temples.includes("身宫"),
@@ -385,10 +391,41 @@ export function repairChartRecordDisplay(chart: ChartRecord, palaces: ChartPalac
 }
 
 export function repairChartAggregateDisplay(aggregate: ChartAggregate): ChartAggregate {
-  const palaces = aggregate.palaces.map(repairPalaceRecord);
+  const palaces = mergeBodyPalaceOverlay(aggregate.palaces.map(repairPalaceRecord));
   return {
     ...aggregate,
     chart: repairChartRecordDisplay(aggregate.chart, palaces),
     palaces,
   };
+}
+
+function mergeBodyPalaceOverlay(palaces: ChartPalaceRecord[]) {
+  const bodyOnlyPalaces = palaces.filter(
+    (palace) => palace.palace_code === "body" || palace.palace_name === BODY_TEMPLE_NAME,
+  );
+  const natalPalaces = palaces.filter(
+    (palace) => palace.palace_code !== "body" && palace.palace_name !== BODY_TEMPLE_NAME,
+  );
+
+  if (bodyOnlyPalaces.length === 0) {
+    return natalPalaces;
+  }
+
+  return natalPalaces.map((palace) => {
+    const matchingBodyPalace = bodyOnlyPalaces.find(
+      (bodyPalace) =>
+        bodyPalace.display_order === palace.display_order ||
+        (
+          bodyPalace.earthly_branch &&
+          bodyPalace.earthly_branch === palace.earthly_branch
+        ),
+    );
+
+    return matchingBodyPalace
+      ? {
+          ...palace,
+          is_body_palace: true,
+        }
+      : palace;
+  });
 }
