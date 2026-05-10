@@ -490,7 +490,6 @@ export function ChartDetailPage() {
               <div className="space-y-3 text-sm text-slate-700">
                 <CompactLine label="性别" value={aggregate.chart.gender === "male" ? "男" : "女"} />
                 <CompactLine label="出生" value={formatChartBirthInfo(aggregate.chart)} />
-                <CompactLine label="时区" value={aggregate.chart.birth_timezone} />
                 <CompactLine label="命宫" value={aggregate.chart.life_palace_branch || "-"} />
                 <CompactLine label="身宫" value={aggregate.chart.body_palace_branch || "-"} />
                 <CompactLine label="命主" value={aggregate.chart.life_master_star || "-"} />

@@ -8,6 +8,7 @@ import { LocationPicker } from "@/features/charts/components/LocationPicker";
 import { chartFormSchema, type ChartFormValues } from "@/features/charts/schemas/chartFormSchema";
 import { chartService } from "@/features/charts/services/chartService";
 import { AppError } from "@/lib/errors";
+import { DEFAULT_BIRTH_TIMEZONE } from "@/lib/constants";
 import type { BirthCalendarType } from "@/types";
 
 const defaultValues: ChartFormValues = {
@@ -16,7 +17,6 @@ const defaultValues: ChartFormValues = {
   birth_calendar_type: "solar",
   birth_date: "",
   birth_time: "",
-  birth_timezone: "Asia/Shanghai",
   birth_location: "",
   leap_month_flag: false,
   true_solar_time_enabled: false,
@@ -88,7 +88,10 @@ export function NewChartPage() {
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError("");
     try {
-      const aggregate = await chartService.createChart(values);
+      const aggregate = await chartService.createChart({
+        ...values,
+        birth_timezone: DEFAULT_BIRTH_TIMEZONE,
+      });
       navigate(`/charts/${aggregate.chart.id}`);
     } catch (error) {
       console.error("Failed to create chart", error);
@@ -165,16 +168,6 @@ export function NewChartPage() {
               placeholder="例如：午时 / 11:30 / 中午11点半"
             />
             <FieldError message={errors.birth_time?.message} />
-          </label>
-
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">时区</span>
-            <input
-              {...register("birth_timezone")}
-              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3"
-              placeholder="Asia/Shanghai"
-            />
-            <FieldError message={errors.birth_timezone?.message} />
           </label>
 
           <div className="block md:col-span-2">

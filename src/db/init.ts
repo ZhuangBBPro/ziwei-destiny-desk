@@ -4,6 +4,7 @@ import { caseService } from "@/features/cases/services/caseService";
 import { chartService } from "@/features/charts/services/chartService";
 import { palaceInterpretationService } from "@/features/charts/services/palaceInterpretationService";
 import { tagService } from "@/features/tags/services/tagService";
+import { DEFAULT_BIRTH_TIMEZONE } from "@/lib/constants";
 import { dayjs } from "@/lib/dayjs";
 
 export async function ensureAppSeeds() {
@@ -43,7 +44,7 @@ export async function createDemoCaseSeed() {
       birth_calendar_type: "solar",
       birth_date: "1992-08-14",
       birth_time: "23:30",
-      birth_timezone: "Asia/Shanghai",
+      birth_timezone: DEFAULT_BIRTH_TIMEZONE,
       birth_location: "上海",
       leap_month_flag: false,
       true_solar_time_enabled: false,

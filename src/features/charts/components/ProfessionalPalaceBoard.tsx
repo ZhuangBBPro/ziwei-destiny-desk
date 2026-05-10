@@ -305,7 +305,6 @@ export function ProfessionalPalaceBoard({
 
                   <div className="mt-2 grid gap-x-2 gap-y-1 text-[10px] text-[#4f3929] md:mt-3 md:gap-y-1.5 md:text-[11px] md:grid-cols-2">
                     <SummaryLine label={getBirthCalendarLabel(chart.birth_calendar_type)} value={`${chart.birth_date} ${chart.birth_time}`} />
-                    <SummaryLine label="时区" value={chart.birth_timezone} />
                     <SummaryLine label="出生地" value={chart.birth_location || "-"} />
                     <SummaryLine label="版本" value={chart.chart_version} />
                     <SummaryLine label="命主" value={chart.life_master_star || "-"} />
