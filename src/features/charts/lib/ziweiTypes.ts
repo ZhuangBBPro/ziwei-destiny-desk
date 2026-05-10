@@ -16,6 +16,9 @@ export interface ZiweiLibraryBridge {
     M: unknown;
     F: unknown;
   };
+  defaultCalendar?: {
+    lunar2solar?: (year: number, month: number, day: number, isLeapMonth?: boolean) => unknown;
+  };
   BoardCriteria?: new (board: unknown) => unknown;
   Temple?: Record<string, unknown>;
   starByName?: (name: string) => unknown;

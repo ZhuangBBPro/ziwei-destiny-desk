@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldError } from "@/components/ui/FieldError";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { ProfessionalPalaceBoard } from "@/features/charts/components/ProfessionalPalaceBoard";
+import { formatChartBirthInfo } from "@/features/charts/lib/birthDisplay";
 import { chartService } from "@/features/charts/services/chartService";
 import {
   caseFormSchema,
@@ -488,7 +489,7 @@ export function ChartDetailPage() {
             >
               <div className="space-y-3 text-sm text-slate-700">
                 <CompactLine label="性别" value={aggregate.chart.gender === "male" ? "男" : "女"} />
-                <CompactLine label="出生" value={`${aggregate.chart.birth_date} ${aggregate.chart.birth_time}`} />
+                <CompactLine label="出生" value={formatChartBirthInfo(aggregate.chart)} />
                 <CompactLine label="时区" value={aggregate.chart.birth_timezone} />
                 <CompactLine label="命宫" value={aggregate.chart.life_palace_branch || "-"} />
                 <CompactLine label="身宫" value={aggregate.chart.body_palace_branch || "-"} />

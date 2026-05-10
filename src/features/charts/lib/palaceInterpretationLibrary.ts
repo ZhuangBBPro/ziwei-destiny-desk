@@ -23,6 +23,36 @@ export const PALACE_INTERPRETATION_LIBRARY: Record<string, PalaceInterpretationD
   "交友宫": [
     {
       "category": "major",
+      "title": "紫薇星系",
+      "aliases": [
+        "紫微",
+        "紫薇"
+      ],
+      "matchMode": "any",
+      "content": [
+        "紫薇星代表你所交的这类人群，层次能力是强的，但是不太好去管理掌控",
+        "一定要见左辅右弼，紫薇见左辅右弼代表下属能给命主带来持久稳定的助力",
+        "见禄马也还不错",
+        "就算是普普通通社交都容易是有社会地位的人（说明交际圈子很强）",
+        "孤军（无吉无煞，或者三方四正一个吉一颗煞）时，来自于交友宫的助力不足，并且这个方面的数量减少"
+      ]
+    },
+    {
+      "category": "major",
+      "title": "天同（和善，适合落六亲宫位）",
+      "aliases": [
+        "天同"
+      ],
+      "matchMode": "any",
+      "content": [
+        "遇到吉星吉化：不仅关系和睦，能得到下属给你的助力",
+        "路人缘很好，在外和什么人都能相处的很好",
+        "见煞没有吉星的情况下：下属容易拖累命主，下属犯错需要负责擦屁股",
+        "客户容易售后多，需要擦屁股，也容易有感情上的不爽，需要费心"
+      ]
+    },
+    {
+      "category": "major",
       "title": "廉贞",
       "aliases": [
         "廉贞",
@@ -237,6 +267,20 @@ export const PALACE_INTERPRETATION_LIBRARY: Record<string, PalaceInterpretationD
       "matchMode": "any",
       "content": [
         "禄马：可以通过交友来财（客户，下属）"
+      ]
+    },
+    {
+      "category": "misc",
+      "title": "羊陀",
+      "aliases": [
+        "擎羊",
+        "陀罗",
+        "陀羅"
+      ],
+      "matchMode": "any",
+      "content": [
+        "羊陀：代表是非、斗争、麻烦、伤害",
+        "如果是刑忌夹，或羊陀火铃夹，容易因为交友宫人群而带来是非、官司或拖累"
       ]
     },
     {
@@ -659,6 +703,21 @@ export const PALACE_INTERPRETATION_LIBRARY: Record<string, PalaceInterpretationD
     },
     {
       "category": "major",
+      "title": "天同",
+      "aliases": [
+        "天同"
+      ],
+      "matchMode": "any",
+      "content": [
+        "性格：天真浪漫爱幻想，爱享受，进取意识弱，随缘，无所谓，感性，同理性强，怕吃苦，想方设法犒劳自己",
+        "带软弱的特点，有依赖性。吉星过多无煞，容易沉迷于享受，无斗志",
+        "煞星过多无吉对，过于痛苦消极，遇到困难就退缩，没有责任感，容易走捷径",
+        "体貌特征：白，脸圆，娃娃脸，漂亮，好看，眼带桃花，丰满肉感，体型偏中小个",
+        "35岁前缺福，煞忌增加吃苦程度；35岁后运势提升，先苦后甜"
+      ]
+    },
+    {
+      "category": "major",
       "title": "武曲",
       "aliases": [
         "武曲"
@@ -1025,6 +1084,35 @@ export const PALACE_INTERPRETATION_LIBRARY: Record<string, PalaceInterpretationD
     },
     {
       "category": "major",
+      "title": "天相（配偶稳定持家，有助力）",
+      "aliases": [
+        "天相"
+      ],
+      "matchMode": "any",
+      "content": [
+        "比较好，配偶稳定持家，有助力你的一面",
+        "不喜欢2、3对吉星，代表2婚、3婚、多角恋",
+        "遇单星更容易动荡",
+        "天相需要看夹宫，往往是来自于以前就认识的人，或媒人撮合"
+      ]
+    },
+    {
+      "category": "major",
+      "title": "巨门（化气为暗，主感情不好）",
+      "aliases": [
+        "巨门",
+        "巨門"
+      ],
+      "matchMode": "any",
+      "content": [
+        "容易多争执",
+        "除非太阳庙旺，或遇1、2对吉星，否则始终配偶容易唠叨啰嗦",
+        "如果太阳落陷，谈恋爱都困难，各种是非",
+        "太阳落陷加煞：感情非常动荡，口舌是非，容易有外来桃花"
+      ]
+    },
+    {
+      "category": "major",
       "title": "七杀（孤）",
       "aliases": [
         "七杀",
@@ -1330,6 +1418,51 @@ export const PALACE_INTERPRETATION_LIBRARY: Record<string, PalaceInterpretationD
     }
   ],
   "子女宫": [
+    {
+      "category": "major",
+      "title": "紫薇星",
+      "aliases": [
+        "紫微",
+        "紫薇"
+      ],
+      "matchMode": "any",
+      "content": [
+        "头胎容易得女（需要再结合流年大运盘综合判断）",
+        "比较有主见，比较爱面子，自我意识比较强，好强",
+        "紫薇不见吉不见煞，孤军，容易没有孩子或迟得晚得孩子",
+        "紫薇如遇单星，更加容易未婚先孕或和配偶以外的人有孩子"
+      ]
+    },
+    {
+      "category": "major",
+      "title": "天同（女儿、善星、福星）",
+      "aliases": [
+        "天同"
+      ],
+      "matchMode": "any",
+      "content": [
+        "善星、福星，代表和睦，天同代表女儿",
+        "比较好的组合是2对吉星加三方四正一羊一陀，但不要本宫有羊陀",
+        "天同既对吉星有要求，也对煞星有要求",
+        "火铃增加动荡，也增加缘分浅薄，一生受打击的概率增加",
+        "天同本宫不喜见煞，加多煞则软弱、遇到问题退缩，担不起责任"
+      ]
+    },
+    {
+      "category": "major",
+      "title": "天梁（容易是男孩，需要看太阳）",
+      "aliases": [
+        "天梁"
+      ],
+      "matchMode": "any",
+      "content": [
+        "容易是男孩，需要看太阳",
+        "有吉星时，天梁温和、善良、有慈悲心、喜欢付出",
+        "只是交流会少一些，毕竟天梁带有孤的特质",
+        "天梁遇煞且没有吉星帮扶，性格孤僻，不善交往",
+        "天梁本宫带煞，刑克孩子，第一胎不容易生出来，也容易很迟才得孩子"
+      ]
+    },
     {
       "category": "major",
       "title": "廉贞（要么是天使，要么是恶魔）",
@@ -2153,6 +2286,19 @@ export const PALACE_INTERPRETATION_LIBRARY: Record<string, PalaceInterpretationD
     },
     {
       "category": "major",
+      "title": "武曲",
+      "aliases": [
+        "武曲"
+      ],
+      "matchMode": "any",
+      "content": [
+        "财星，吉星吉化，特别好",
+        "无吉星见到煞星，代表财产的损失，房产的破败",
+        "武曲化忌代表资产的破损"
+      ]
+    },
+    {
+      "category": "major",
       "title": "七杀：",
       "aliases": [
         "七杀",
@@ -2456,6 +2602,106 @@ export const PALACE_INTERPRETATION_LIBRARY: Record<string, PalaceInterpretationD
   "疾厄宫": [
     {
       "category": "major",
+      "title": "紫薇（五行属土）",
+      "aliases": [
+        "紫微",
+        "紫薇"
+      ],
+      "matchMode": "any",
+      "content": [
+        "五行属土（阴土），主要和脾胃、皮肤相关",
+        "紫薇星系与七杀、破军、贪狼、天府、天相同宫时，需要结合五行生克看疾病方向"
+      ]
+    },
+    {
+      "category": "major",
+      "title": "廉贞（五行属火，星性复杂）",
+      "aliases": [
+        "廉贞",
+        "廉貞"
+      ],
+      "matchMode": "any",
+      "content": [
+        "五行属火（阴火），但比较特殊，廉贞一星性难明",
+        "可对应血液病、呼吸系统、伤灾血光之灾、生殖、精神等方向"
+      ]
+    },
+    {
+      "category": "major",
+      "title": "武曲（五行属金）",
+      "aliases": [
+        "武曲"
+      ],
+      "matchMode": "any",
+      "content": [
+        "五行属金，对应肺、呼吸道、大肠、伤灾、骨头",
+        "武曲星系要结合七杀、破军、贪狼、天府、天相等同宫结构看五行生克"
+      ]
+    },
+    {
+      "category": "major",
+      "title": "七杀（五行属金）",
+      "aliases": [
+        "七杀",
+        "七殺"
+      ],
+      "matchMode": "any",
+      "content": [
+        "五行属金，对应肺、呼吸道、伤灾",
+        "七杀本身带有伤灾属性，遇火克金时更容易受伤"
+      ]
+    },
+    {
+      "category": "major",
+      "title": "破军（五行属水）",
+      "aliases": [
+        "破军",
+        "破軍"
+      ],
+      "matchMode": "any",
+      "content": [
+        "五行属水，对应生殖系统、泌尿系统、肾、伤灾、溺水、消耗、破相残疾",
+        "破军组合差时容易带来先天残缺、消耗和身体破损的象"
+      ]
+    },
+    {
+      "category": "major",
+      "title": "贪狼（五行属木、水）",
+      "aliases": [
+        "贪狼",
+        "貪狼"
+      ],
+      "matchMode": "any",
+      "content": [
+        "五行属木、水，对应生殖系统、泌尿系统、肝胆",
+        "贪狼有阳木特质，也可取脊柱方面的问题"
+      ]
+    },
+    {
+      "category": "major",
+      "title": "天府（五行属土）",
+      "aliases": [
+        "天府"
+      ],
+      "matchMode": "any",
+      "content": [
+        "五行属土（阳土），主要和脾胃、皮肤相关"
+      ]
+    },
+    {
+      "category": "major",
+      "title": "天相（五行属水）",
+      "aliases": [
+        "天相"
+      ],
+      "matchMode": "any",
+      "content": [
+        "五行属水，对应生殖系统、排泄系统、肾",
+        "天相也可与皮肤相关，组合时需结合夹宫与同宫主星"
+      ]
+    },
+    {
+      "category": "major",
       "title": "太阳",
       "aliases": [
         "太阳",
@@ -2485,6 +2731,19 @@ export const PALACE_INTERPRETATION_LIBRARY: Record<string, PalaceInterpretationD
         "容易心梗，脑梗",
         "糖尿病（血液堵住了，脂肪过高了）",
         "便血（铃星，陀罗），甚至肠癌"
+      ]
+    },
+    {
+      "category": "major",
+      "title": "太阴（五行属水）",
+      "aliases": [
+        "太阴",
+        "太陰"
+      ],
+      "matchMode": "any",
+      "content": [
+        "五行属水，对应生殖系统、泌尿系统、肾、精神",
+        "太阴忌容易内分泌紊乱，落陷与不良组合时也要注意神志、失眠、健忘等方向"
       ]
     },
     {
@@ -2527,6 +2786,31 @@ export const PALACE_INTERPRETATION_LIBRARY: Record<string, PalaceInterpretationD
         "水过重还容易水肿",
         "天同天梁（土克水）",
         "容易在肾，生殖，排泄容易出问题"
+      ]
+    },
+    {
+      "category": "major",
+      "title": "巨门（五行属土）",
+      "aliases": [
+        "巨门",
+        "巨門"
+      ],
+      "matchMode": "any",
+      "content": [
+        "五行属土，对应肠胃、排泄、管道类、口腔",
+        "巨门为暗曜、为管道，组合差时容易一检查出来就是大病，建议重视体检"
+      ]
+    },
+    {
+      "category": "major",
+      "title": "天同（五行属水）",
+      "aliases": [
+        "天同"
+      ],
+      "matchMode": "any",
+      "content": [
+        "五行属水，对应生殖系统、泌尿系统、排泄系统",
+        "天同星系组合要看水与土、木等五行关系，常见方向包括肾、生殖、排泄与管道类问题"
       ]
     },
     {
@@ -3412,6 +3696,53 @@ export const PALACE_INTERPRETATION_LIBRARY: Record<string, PalaceInterpretationD
     }
   ],
   "迁移宫": [
+    {
+      "category": "major",
+      "title": "紫薇星系",
+      "aliases": [
+        "紫微",
+        "紫薇"
+      ],
+      "matchMode": "any",
+      "content": [
+        "紫薇独坐：在外容易被人尊重，在外容易得贵人帮助",
+        "再遇几对吉星，适合往外跑或变动工作",
+        "如果紫薇未见煞也未见吉，属于孤军，代表在外施展不开拳脚，一个人苦撑局面",
+        "紫薇加煞星：看似遇到贵人，实则这个贵人是越帮越乱的",
+        "紫杀在外环境变化快，需要在外面临很大的开创；见吉星吉化则开创有成，见煞无吉则是非麻烦动荡严重"
+      ]
+    },
+    {
+      "category": "major",
+      "title": "廉贞星系",
+      "aliases": [
+        "廉贞",
+        "廉貞"
+      ],
+      "matchMode": "any",
+      "content": [
+        "官星落迁移宫，代表在外谋发展，到别的单位做管理、经商或做杂务管理",
+        "廉贞见吉星，代表有权威，能得到别人尊重，有人缘",
+        "廉贞见煞，化气为囚，在外遇到凶险，跑出去惹事生非",
+        "廉贞遇煞又见忌，需注意血光、灾祸、官司、牢狱",
+        "廉杀、廉破、廉贪若见吉星对与好的四化，可以在外做武职、工商纪检法、军警、销售、中介、经商贸易等开创型方向"
+      ]
+    },
+    {
+      "category": "major",
+      "title": "武曲星系（刚星、财星）",
+      "aliases": [
+        "武曲"
+      ],
+      "matchMode": "any",
+      "content": [
+        "财星入迁移，代表在外面亲力亲为去打拼赚钱，劳碌命，自己赚的",
+        "武曲加吉星加禄，虽然辛苦，但有来自各方的帮助，来财能力强",
+        "本宫有煞容易损财，再见三方还有煞更损财，在外经商会失败，甚至生病",
+        "武曲见煞，刀子性质会体现出来；再见武曲化忌，尤其确认受伤、伤病",
+        "武曲忌若见一两对吉星，反而主很忙碌"
+      ]
+    },
     {
       "category": "major",
       "title": "七杀（钢星，将星，关羽）（具有权威，永远具有杀星的特质）",

@@ -46,7 +46,7 @@ function toLibraryName(name: TimeGroundName) {
 }
 
 export function normalizeTimeGroundInput(input: string): TimeGroundMappingResult | null {
-  const normalized = input.trim().replace("時", "时");
+  const normalized = normalizeClockText(input);
   if ((GROUND_NAMES as readonly string[]).includes(normalized)) {
     return {
       normalizedName: normalized as TimeGroundName,
@@ -78,6 +78,33 @@ export function normalizeTimeGroundInput(input: string): TimeGroundMappingResult
     normalizedName,
     libraryName: toLibraryName(normalizedName),
   };
+}
+
+function normalizeClockText(input: string) {
+  const normalized = input
+    .trim()
+    .replace(/：/g, ":")
+    .replace(/時/g, "时")
+    .replace(/\s+/g, "");
+
+  const chineseTimeMatch = normalized.match(/^(凌晨|早上|上午|中午|下午|晚上|夜里)?(\d{1,2})点(半|(\d{1,2})分?)?$/);
+  if (!chineseTimeMatch) {
+    return normalized;
+  }
+
+  const meridiem = chineseTimeMatch[1] ?? "";
+  let hour = Number(chineseTimeMatch[2]);
+  const minute = chineseTimeMatch[3] === "半" ? 30 : Number(chineseTimeMatch[4] ?? 0);
+
+  if (["下午", "晚上", "夜里"].includes(meridiem) && hour < 12) {
+    hour += 12;
+  }
+
+  if (meridiem === "凌晨" && hour === 12) {
+    hour = 0;
+  }
+
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
 export function mapClockTimeToGround(hour: number, minute: number): TimeGroundName {
@@ -127,7 +154,7 @@ export function mapClockTimeToGround(hour: number, minute: number): TimeGroundNa
 export function requireTimeGround(input: string) {
   const mapped = normalizeTimeGroundInput(input);
   if (!mapped) {
-    throw new AppError("出生时辰无法映射，请输入十二时辰或 HH:mm。", "INVALID_TIME_GROUND", {
+    throw new AppError("出生时辰无法映射，请输入十二时辰、HH:mm 或 11点半。", "INVALID_TIME_GROUND", {
       input,
     });
   }

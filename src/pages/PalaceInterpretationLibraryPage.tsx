@@ -126,7 +126,7 @@ export function PalaceInterpretationLibraryPage() {
     const nextEntries = await palaceInterpretationService.listEntriesByPalace(selectedPalaceName);
     setEntries(nextEntries);
     setActiveEntryId(saved.id);
-    setStatusText("已保存，命盘右键气泡会立即使用这版文案。");
+    setStatusText("已保存，命盘双击气泡会立即使用这版文案。");
   }
 
   async function handleDelete() {
@@ -136,7 +136,7 @@ export function PalaceInterpretationLibraryPage() {
       return;
     }
 
-    if (!window.confirm("确定删除这条宫位文案吗？删除后右键气泡不会再命中它。")) {
+    if (!window.confirm("确定删除这条宫位文案吗？删除后双击气泡不会再命中它。")) {
       return;
     }
 
@@ -153,7 +153,7 @@ export function PalaceInterpretationLibraryPage() {
         <p className="text-xs uppercase tracking-[0.35em] text-[#9b7f52]">Palace Copy Library</p>
         <h1 className="mt-2 font-serif text-4xl text-[#2f1b0d]">宫位文案库</h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-[#5f4830]">
-          这里维护 11 个宫位的主星、辅星、杂星命中文案。右键命盘宫位时，会按当前宫位星曜读取这里保存的本地文案。
+          这里维护 11 个宫位的主星、辅星、杂星命中文案。双击命盘宫位时，会按当前宫位星曜读取这里保存的本地文案。
         </p>
       </section>
 
@@ -354,7 +354,7 @@ export function PalaceInterpretationLibraryPage() {
                   onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
                   rows={12}
                   className="rounded-2xl border border-[#ddceb6] bg-white px-4 py-3 text-sm leading-6 outline-none focus:border-[#7e2c2c]"
-                  placeholder="每行一段，右键气泡中会逐段展示。"
+                  placeholder="每行一段，双击气泡中会逐段展示。"
                 />
               </label>
 

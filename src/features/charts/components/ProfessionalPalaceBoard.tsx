@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { MouseEvent, PointerEvent } from "react";
 import type {
   ChartPalaceRecord,
   ChartRecord,
   PalaceInterpretationCategory,
   PalaceInterpretationHit,
 } from "@/types";
+import { getBirthCalendarLabel } from "@/features/charts/lib/birthDisplay";
 import { palaceInterpretationService } from "@/features/charts/services/palaceInterpretationService";
 
 interface ProfessionalPalaceBoardProps {
@@ -126,10 +128,52 @@ export function ProfessionalPalaceBoard({
   const highlightedPalaces = getHighlightedPalaces(orderedPalaces, selectedPalace?.palace_code, transformEntries);
   const defaultTriangleLines = getDefaultTriangleLines(orderedPalaces, selectedPalace?.palace_code);
   const [interpretationPopover, setInterpretationPopover] = useState<InterpretationPopoverState | null>(null);
+  const lastTouchTapRef = useRef<{ palaceCode: string; time: number; x: number; y: number } | null>(null);
   const activeInterpretationPalace = interpretationPopover
     ? orderedPalaces.find((palace) => palace.palace_code === interpretationPopover.palaceCode)
     : undefined;
   const [interpretationHits, setInterpretationHits] = useState<PalaceInterpretationHit[]>([]);
+
+  function openInterpretationPopover(palace: ChartPalaceRecord, clientX: number, clientY: number) {
+    onSelectPalace(palace.palace_code);
+    setInterpretationPopover({
+      palaceCode: palace.palace_code,
+      ...getAdaptivePopoverPosition(clientX, clientY),
+    });
+  }
+
+  function handlePalaceDoubleClick(event: MouseEvent<HTMLButtonElement>, palace: ChartPalaceRecord) {
+    event.preventDefault();
+    event.stopPropagation();
+    openInterpretationPopover(palace, event.clientX, event.clientY);
+  }
+
+  function handlePalacePointerUp(event: PointerEvent<HTMLButtonElement>, palace: ChartPalaceRecord) {
+    if (event.pointerType === "mouse") {
+      return;
+    }
+
+    const now = Date.now();
+    const lastTap = lastTouchTapRef.current;
+    const distance = lastTap ? Math.hypot(event.clientX - lastTap.x, event.clientY - lastTap.y) : Number.POSITIVE_INFINITY;
+    const isDoubleTap =
+      Boolean(lastTap) && lastTap?.palaceCode === palace.palace_code && now - lastTap.time <= 420 && distance <= 36;
+
+    if (isDoubleTap) {
+      event.preventDefault();
+      event.stopPropagation();
+      lastTouchTapRef.current = null;
+      openInterpretationPopover(palace, event.clientX, event.clientY);
+      return;
+    }
+
+    lastTouchTapRef.current = {
+      palaceCode: palace.palace_code,
+      time: now,
+      x: event.clientX,
+      y: event.clientY,
+    };
+  }
 
   useEffect(() => {
     let isActive = true;
@@ -211,16 +255,13 @@ export function ProfessionalPalaceBoard({
                 key={palace.id}
                 type="button"
                 style={{ gridArea: BRANCH_GRID_AREAS[palace.earthly_branch] ?? FALLBACK_GRID_AREAS[index] }}
-                onClick={() => onSelectPalace(palace.palace_code)}
-                onContextMenu={(event) => {
-                  event.preventDefault();
+                onClick={(event) => {
                   event.stopPropagation();
                   onSelectPalace(palace.palace_code);
-                  setInterpretationPopover({
-                    palaceCode: palace.palace_code,
-                    ...getAdaptivePopoverPosition(event.clientX, event.clientY),
-                  });
                 }}
+                onDoubleClick={(event) => handlePalaceDoubleClick(event, palace)}
+                onPointerUp={(event) => handlePalacePointerUp(event, palace)}
+                onContextMenu={(event) => event.preventDefault()}
                 className={buildPalaceCardClass({
                   isSelected: palace.palace_code === selectedPalace?.palace_code,
                   isHighlighted: highlightedPalaces.has(palace.palace_code),
@@ -263,7 +304,7 @@ export function ProfessionalPalaceBoard({
                   </div>
 
                   <div className="mt-2 grid gap-x-2 gap-y-1 text-[10px] text-[#4f3929] md:mt-3 md:gap-y-1.5 md:text-[11px] md:grid-cols-2">
-                    <SummaryLine label="阳历" value={`${chart.birth_date} ${chart.birth_time}`} />
+                    <SummaryLine label={getBirthCalendarLabel(chart.birth_calendar_type)} value={`${chart.birth_date} ${chart.birth_time}`} />
                     <SummaryLine label="时区" value={chart.birth_timezone} />
                     <SummaryLine label="出生地" value={chart.birth_location || "-"} />
                     <SummaryLine label="版本" value={chart.chart_version} />
@@ -522,7 +563,7 @@ function PalaceInterpretationPopover({
     >
       <div className="flex items-start justify-between gap-3 border-b border-[#e0cfb2] bg-[#f5ead8] px-4 py-3">
         <div>
-          <p className="text-[10px] uppercase tracking-[0.28em] text-[#9b7f52]">右键命中文案</p>
+          <p className="text-[10px] uppercase tracking-[0.28em] text-[#9b7f52]">双击命中文案</p>
           <h3 className="mt-1 font-serif text-lg text-[#2f1b0d]">
             {palace.palace_name} · {palace.heavenly_stem}{palace.earthly_branch}
           </h3>
@@ -708,15 +749,17 @@ function buildPalaceCardClass({
   isSelected: boolean;
   isHighlighted: boolean;
 }) {
+  const baseClass = "touch-manipulation select-none overflow-hidden rounded-[1.35rem] p-2 transition md:p-2.5 xl:p-3";
+
   if (isSelected) {
-    return "overflow-hidden rounded-[1.35rem] border border-[#7e2c2c] bg-[#fff7f3] p-2 md:p-2.5 xl:p-3 shadow-[0_8px_28px_rgba(126,44,44,0.16)] transition";
+    return `${baseClass} border border-[#7e2c2c] bg-[#fff7f3] shadow-[0_8px_28px_rgba(126,44,44,0.16)]`;
   }
 
   if (isHighlighted) {
-    return "overflow-hidden rounded-[1.35rem] border border-[#a88a5e] bg-[#fffaf0] p-2 md:p-2.5 xl:p-3 shadow-[0_6px_24px_rgba(92,68,28,0.12)] transition";
+    return `${baseClass} border border-[#a88a5e] bg-[#fffaf0] shadow-[0_6px_24px_rgba(92,68,28,0.12)]`;
   }
 
-  return "overflow-hidden rounded-[1.35rem] border border-[#d8c8ae] bg-[#f9f3e8] p-2 md:p-2.5 xl:p-3 transition hover:border-[#b99a6b] hover:bg-[#fffaf1]";
+  return `${baseClass} border border-[#d8c8ae] bg-[#f9f3e8] hover:border-[#b99a6b] hover:bg-[#fffaf1]`;
 }
 
 function readName(value: unknown) {

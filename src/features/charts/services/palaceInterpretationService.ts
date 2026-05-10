@@ -39,6 +39,7 @@ export class PalaceInterpretationService {
   async ensureDefaultLibrarySeeded() {
     const count = await palaceInterpretationRepository.count();
     if (count > 0) {
+      await this.syncMissingDefaultEntries();
       await this.cleanupDuplicateEntries();
       return;
     }
@@ -63,6 +64,7 @@ export class PalaceInterpretationService {
     );
 
     await palaceInterpretationRepository.bulkSave(records);
+    await this.syncMissingDefaultEntries();
     await this.cleanupDuplicateEntries();
   }
 
@@ -170,6 +172,37 @@ export class PalaceInterpretationService {
     }
 
     return this.duplicateCleanupPromise;
+  }
+
+  private async syncMissingDefaultEntries() {
+    const records = await palaceInterpretationRepository.listAll();
+    const existingKeys = new Set(records.map(getRecordDedupeKey));
+    const now = dayjs().toISOString();
+    const missingRecords = Object.entries(PALACE_INTERPRETATION_LIBRARY).flatMap(
+      ([palaceName, entries]) =>
+        entries.flatMap((entry, index) => {
+          const record: PalaceInterpretationRecord = {
+            id: uuidv4(),
+            palace_name: palaceName,
+            category: entry.category,
+            title: entry.title,
+            aliases: entry.aliases,
+            match_mode: entry.matchMode,
+            content: entry.content,
+            is_enabled: true,
+            sort_order: index + 1,
+            source: "builtin",
+            created_at: now,
+            updated_at: now,
+          };
+
+          return existingKeys.has(getRecordDedupeKey(record)) ? [] : [record];
+        }),
+    );
+
+    if (missingRecords.length > 0) {
+      await palaceInterpretationRepository.bulkSave(missingRecords);
+    }
   }
 }
 

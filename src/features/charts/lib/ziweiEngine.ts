@@ -71,7 +71,14 @@ async function loadZiweiBridge(): Promise<ZiweiLibraryBridge> {
 }
 
 function parseBirthDate(input: string) {
-  const match = input.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const trimmed = input.trim();
+  const compactNormalized = trimmed.replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3");
+  const normalized = compactNormalized.replace(
+    /^(\d{4})[./-](\d{1,2})[./-](\d{1,2})$/,
+    (_, year: string, month: string, day: string) =>
+      `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`,
+  );
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) {
     throw new AppError("出生日期格式不合法，请使用 YYYY-MM-DD。", "INVALID_BIRTH_DATE", {
       input,
@@ -85,6 +92,38 @@ function parseBirthDate(input: string) {
   };
 }
 
+function assertValidBirthDate(
+  bridge: ZiweiLibraryBridge,
+  input: ZiweiCreateConfigInput,
+  date: { year: number; month: number; day: number },
+) {
+  const { year, month, day } = date;
+
+  if (input.birth_calendar_type === "solar") {
+    const nativeDate = new Date(Date.UTC(year, month - 1, day));
+    if (
+      nativeDate.getUTCFullYear() !== year ||
+      nativeDate.getUTCMonth() !== month - 1 ||
+      nativeDate.getUTCDate() !== day
+    ) {
+      throw new AppError("阳历出生日期不存在，请重新检查年月日。", "INVALID_SOLAR_DATE", input);
+    }
+    return;
+  }
+
+  try {
+    bridge.defaultCalendar?.lunar2solar?.(year, month, day, input.leap_month_flag);
+  } catch (error) {
+    throw new AppError(
+      input.leap_month_flag
+        ? "农历闰月日期不合法：该年份可能没有对应闰月，或日期超出当月范围。"
+        : "农历出生日期不存在，请重新检查年月日和闰月选项。",
+      "INVALID_LUNAR_DATE",
+      error,
+    );
+  }
+}
+
 function mapGender(bridge: ZiweiLibraryBridge, gender: ZiweiCreateConfigInput["gender"]) {
   return gender === "male" ? bridge.Gender.M : bridge.Gender.F;
 }
@@ -92,6 +131,7 @@ function mapGender(bridge: ZiweiLibraryBridge, gender: ZiweiCreateConfigInput["g
 export async function createRawZiweiBoard(input: ZiweiCreateConfigInput): Promise<ZiweiRawBoard> {
   const bridge = await loadZiweiBridge();
   const { year, month, day } = parseBirthDate(input.birth_date);
+  assertValidBirthDate(bridge, input, { year, month, day });
   const timeGroundMapping = requireTimeGround(input.birth_time);
   const bornTimeGround = bridge.DayTimeGround.getByName(timeGroundMapping.libraryName);
 

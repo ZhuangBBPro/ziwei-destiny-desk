@@ -4,7 +4,11 @@ import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { CardSection } from "@/components/ui/CardSection";
 import { FieldError } from "@/components/ui/FieldError";
-import { chartFormSchema, type ChartFormValues } from "@/features/charts/schemas/chartFormSchema";
+import {
+  chartFormSchema,
+  normalizeBirthDateInput,
+  type ChartFormValues,
+} from "@/features/charts/schemas/chartFormSchema";
 import { chartService } from "@/features/charts/services/chartService";
 import { AppError } from "@/lib/errors";
 
@@ -39,7 +43,10 @@ export function NewChartPage() {
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError("");
     try {
-      const aggregate = await chartService.createChart(values);
+      const aggregate = await chartService.createChart({
+        ...values,
+        birth_date: normalizeBirthDateInput(values.birth_date),
+      });
       navigate(`/charts/${aggregate.chart.id}`);
     } catch (error) {
       console.error("Failed to create chart", error);
@@ -91,12 +98,20 @@ export function NewChartPage() {
           </label>
 
           <label className="block">
-            <span className="text-sm font-medium text-slate-700">出生日期</span>
+            <span className="text-sm font-medium text-slate-700">
+              {birthCalendarType === "lunar" ? "农历出生日期" : "阳历出生日期"}
+            </span>
             <input
-              type="date"
+              type={birthCalendarType === "lunar" ? "text" : "date"}
               {...register("birth_date")}
               className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3"
+              placeholder={birthCalendarType === "lunar" ? "例如：1978-06-23 或 19780623" : undefined}
             />
+            <p className="mt-1 text-xs text-slate-500">
+              {birthCalendarType === "lunar"
+                ? "当前按农历年月日排盘；如果是闰月，请勾选下方“农历闰月”。"
+                : "当前按阳历年月日排盘。"}
+            </p>
             <FieldError message={errors.birth_date?.message} />
           </label>
 
@@ -105,7 +120,7 @@ export function NewChartPage() {
             <input
               {...register("birth_time")}
               className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3"
-              placeholder="例如：子时 或 23:30"
+              placeholder="例如：午时 / 11:30 / 中午11点半"
             />
             <FieldError message={errors.birth_time?.message} />
           </label>
@@ -168,7 +183,7 @@ export function NewChartPage() {
             {isSubmitting ? "排盘中..." : "真实排盘并保存"}
           </button>
           <p className="self-center text-sm text-slate-500">
-            时辰支持 `子时` / `丑时` 或 `23:30` 这类 HH:mm 输入
+            时辰支持 `午时`、`11:30`、`中午11点半` 这类输入
           </p>
         </div>
       </form>

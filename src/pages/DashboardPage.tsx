@@ -4,6 +4,7 @@ import { CardSection } from "@/components/ui/CardSection";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { chartService } from "@/features/charts/services/chartService";
+import { formatChartBirthInfo } from "@/features/charts/lib/birthDisplay";
 import { caseService } from "@/features/cases/services/caseService";
 import { getRecentChartViews } from "@/lib/recentViews";
 import type { ChartRecord } from "@/types";
@@ -149,7 +150,7 @@ export function DashboardPage() {
               >
                 <p className="font-medium text-slate-900">{chart.subject_name}</p>
                 <p className="mt-1 text-sm text-slate-600">
-                  {chart.birth_date} {chart.birth_time}
+                  {formatChartBirthInfo(chart)}
                 </p>
               </Link>
             ))
