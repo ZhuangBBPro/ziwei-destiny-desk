@@ -30,7 +30,6 @@ import type {
   TagRecord,
 } from "@/types";
 
-type BoardViewMode = "natal" | "triangle" | "transforms";
 type WorkspaceTab = "workbench" | "notes" | "timeline";
 
 const defaultCreateCaseValues: CaseFormValues = {
@@ -81,7 +80,6 @@ export function ChartDetailPage() {
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [selectedPalaceCode, setSelectedPalaceCode] = useState("");
-  const [boardViewMode, setBoardViewMode] = useState<BoardViewMode>("natal");
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>("workbench");
 
   const createCaseForm = useForm<CaseFormValues>({
@@ -406,25 +404,10 @@ export function ChartDetailPage() {
           </div>
 
           <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap gap-2">
-              {[
-                { key: "natal", label: "本命" },
-                { key: "triangle", label: "三方四正" },
-                { key: "transforms", label: "四化" },
-              ].map((mode) => (
-                <button
-                  key={mode.key}
-                  type="button"
-                  onClick={() => setBoardViewMode(mode.key as BoardViewMode)}
-                  className={`rounded-full px-4 py-2 text-sm ${
-                    boardViewMode === mode.key
-                      ? "bg-[#2f1b0d] text-white"
-                      : "bg-white/70 text-[#654b2e]"
-                  }`}
-                >
-                  {mode.label}
-                </button>
-              ))}
+            <div className="flex flex-wrap gap-2 text-sm text-[#654b2e]">
+              <span className="rounded-full bg-white/70 px-4 py-2">本命</span>
+              <span className="rounded-full bg-white/70 px-4 py-2">三方四正</span>
+              <span className="rounded-full bg-white/70 px-4 py-2">四化</span>
             </div>
 
             <div className="flex flex-wrap justify-end gap-2">
@@ -459,7 +442,6 @@ export function ChartDetailPage() {
             chart={aggregate.chart}
             palaces={aggregate.palaces}
             selectedPalaceCode={selectedPalaceCode}
-            viewMode={boardViewMode}
             onSelectPalace={setSelectedPalaceCode}
           />
 

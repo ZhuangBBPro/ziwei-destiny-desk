@@ -1,12 +1,9 @@
 import type { ChartPalaceRecord, ChartRecord } from "@/types";
 
-type BoardViewMode = "natal" | "triangle" | "transforms";
-
 interface ProfessionalPalaceBoardProps {
   chart: ChartRecord;
   palaces: ChartPalaceRecord[];
   selectedPalaceCode: string;
-  viewMode: BoardViewMode;
   onSelectPalace: (palaceCode: string) => void;
 }
 
@@ -40,12 +37,6 @@ const BRANCH_GRID_AREAS: Record<string, string> = {
   亥: "4 / 4 / 5 / 5",
 };
 
-const VIEW_MODE_LABEL: Record<BoardViewMode, string> = {
-  natal: "本命盘",
-  triangle: "三方四正",
-  transforms: "四化飞星",
-};
-
 const AUSPICIOUS_STARS = new Set([
   "左輔",
   "左辅",
@@ -59,34 +50,6 @@ const AUSPICIOUS_STARS = new Set([
   "禄存",
   "天馬",
   "天马",
-  "天喜",
-  "紅鸞",
-  "红鸾",
-  "天德",
-  "月德",
-  "天官",
-  "天福",
-  "天貴",
-  "天贵",
-  "龍池",
-  "龙池",
-  "鳳閣",
-  "凤阁",
-  "恩光",
-  "天壽",
-  "天寿",
-  "台輔",
-  "台辅",
-  "封誥",
-  "封诰",
-  "三台",
-  "八座",
-  "解神",
-  "天才",
-  "天巫",
-  "博士",
-  "天廚",
-  "天厨",
 ]);
 
 const MALEFIC_STARS = new Set([
@@ -98,36 +61,6 @@ const MALEFIC_STARS = new Set([
   "铃星",
   "地空",
   "地劫",
-  "天刑",
-  "天傷",
-  "天伤",
-  "天使",
-  "劫煞",
-  "災煞",
-  "灾煞",
-  "大耗",
-  "小耗",
-  "破碎",
-  "天哭",
-  "天虛",
-  "天虚",
-  "陰煞",
-  "阴煞",
-  "孤辰",
-  "寡宿",
-  "蜚廉",
-  "天空",
-  "截空",
-  "旬空",
-  "咸池",
-  "病符",
-  "官符",
-  "歲破",
-  "岁破",
-  "喪門",
-  "丧门",
-  "白虎",
-  "吊客",
 ]);
 
 interface TransformEntry {
@@ -151,7 +84,6 @@ export function ProfessionalPalaceBoard({
   chart,
   palaces,
   selectedPalaceCode,
-  viewMode,
   onSelectPalace,
 }: ProfessionalPalaceBoardProps) {
   const orderedPalaces = normalizeNatalPalaces(palaces);
@@ -159,7 +91,7 @@ export function ProfessionalPalaceBoard({
     orderedPalaces.find((palace) => palace.palace_code === selectedPalaceCode) ?? orderedPalaces[0];
   const lifePalace = orderedPalaces.find((palace) => palace.palace_code === "life") ?? orderedPalaces[0];
   const transformEntries = readTransformEntries(chart.snapshot_json);
-  const highlightedPalaces = getHighlightedPalaces(orderedPalaces, selectedPalace?.palace_code, viewMode, transformEntries);
+  const highlightedPalaces = getHighlightedPalaces(orderedPalaces, selectedPalace?.palace_code, transformEntries);
   const defaultTriangleLines = getDefaultTriangleLines(orderedPalaces, lifePalace?.palace_code);
 
   return (
@@ -167,7 +99,7 @@ export function ProfessionalPalaceBoard({
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-[#8b6b3c]">Professional Board</p>
-          <h2 className="mt-1 font-serif text-2xl text-[#3a2413]">{VIEW_MODE_LABEL[viewMode]}</h2>
+          <h2 className="mt-1 font-serif text-2xl text-[#3a2413]">本命盘</h2>
         </div>
         <div className="flex flex-wrap gap-2 text-xs text-[#6e5840]">
           <BoardBadge label={`命宫 ${chart.life_palace_branch || "-"}`} />
@@ -200,7 +132,7 @@ export function ProfessionalPalaceBoard({
                   palace={palace}
                   selected={palace.palace_code === selectedPalace?.palace_code}
                   transforms={findPalaceTransforms(palace, transformEntries)}
-                  showTransforms={viewMode === "transforms"}
+                  showTransforms
                   relationLabel={highlightedPalaces.get(palace.palace_code)}
                 />
               </button>
@@ -421,7 +353,7 @@ function TriangleConnectionLayer({ lines }: { lines: ConnectionLine[] }) {
   return (
     <svg
       aria-hidden="true"
-      className="pointer-events-none absolute inset-0 z-10 h-full w-full overflow-visible text-[#7e2c2c]"
+      className="pointer-events-none absolute inset-0 z-30 h-full w-full overflow-visible text-[#7e2c2c]"
       viewBox="0 0 4 4"
       preserveAspectRatio="none"
     >
@@ -433,10 +365,10 @@ function TriangleConnectionLayer({ lines }: { lines: ConnectionLine[] }) {
           x2={line.to.x}
           y2={line.to.y}
           stroke={line.tone === "opposite" ? "#7e2c2c" : "#2f7b66"}
-          strokeWidth={line.tone === "opposite" ? 0.022 : 0.018}
-          strokeDasharray={line.tone === "opposite" ? "0.09 0.07" : "0.075 0.07"}
+          strokeWidth={line.tone === "opposite" ? 2 : 1.8}
+          strokeDasharray={line.tone === "opposite" ? "8 6" : "7 6"}
           strokeLinecap="round"
-          opacity={line.tone === "opposite" ? 0.72 : 0.62}
+          opacity={line.tone === "opposite" ? 0.82 : 0.72}
           vectorEffect="non-scaling-stroke"
         />
       ))}
@@ -648,7 +580,6 @@ function findPalaceTransforms(palace: ChartPalaceRecord, entries: TransformEntry
 function getHighlightedPalaces(
   palaces: ChartPalaceRecord[],
   selectedPalaceCode: string | undefined,
-  viewMode: BoardViewMode,
   transformEntries: TransformEntry[],
 ) {
   const map = new Map<string, string>();
@@ -658,7 +589,7 @@ function getHighlightedPalaces(
     map.set(selectedPalaceCode, "本宫");
   }
 
-  if (viewMode === "triangle" && selectedIndex >= 0) {
+  if (selectedIndex >= 0) {
     const opposite = palaces[(selectedIndex + 6) % palaces.length];
     const triadA = palaces[(selectedIndex + 4) % palaces.length];
     const triadB = palaces[(selectedIndex + 8) % palaces.length];
@@ -674,17 +605,15 @@ function getHighlightedPalaces(
     }
   }
 
-  if (viewMode === "transforms") {
-    palaces.forEach((palace) => {
-      const transforms = findPalaceTransforms(palace, transformEntries);
-      if (transforms.length > 0) {
-        map.set(
-          palace.palace_code,
-          transforms.map((item) => item.derivative).join(""),
-        );
-      }
-    });
-  }
+  palaces.forEach((palace) => {
+    const transforms = findPalaceTransforms(palace, transformEntries);
+    if (transforms.length > 0 && !map.has(palace.palace_code)) {
+      map.set(
+        palace.palace_code,
+        transforms.map((item) => item.derivative).join(""),
+      );
+    }
+  });
 
   return map;
 }
