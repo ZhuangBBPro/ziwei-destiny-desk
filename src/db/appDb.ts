@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import { appDbStores, type AppDatabaseTables } from "@/db/schema";
+import { appDbStores, appDbStoresV1, type AppDatabaseTables } from "@/db/schema";
 
 export class AppDB extends Dexie {
   charts!: Table<AppDatabaseTables["charts"], string>;
@@ -13,10 +13,12 @@ export class AppDB extends Dexie {
   case_tags!: Table<AppDatabaseTables["case_tags"], string>;
   rule_hints!: Table<AppDatabaseTables["rule_hints"], string>;
   case_rule_hint_hits!: Table<AppDatabaseTables["case_rule_hint_hits"], string>;
+  palace_interpretations!: Table<AppDatabaseTables["palace_interpretations"], string>;
 
   constructor() {
     super("ziwei-destiny-desk");
-    this.version(1).stores(appDbStores);
+    this.version(1).stores(appDbStoresV1);
+    this.version(2).stores(appDbStores);
   }
 }
 

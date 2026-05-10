@@ -2,6 +2,7 @@ import { appDb } from "@/db/appDb";
 import { builtinRuleHintsSeed, builtinTagsSeed } from "@/db/seeds";
 import { caseService } from "@/features/cases/services/caseService";
 import { chartService } from "@/features/charts/services/chartService";
+import { palaceInterpretationService } from "@/features/charts/services/palaceInterpretationService";
 import { tagService } from "@/features/tags/services/tagService";
 import { dayjs } from "@/lib/dayjs";
 
@@ -18,6 +19,8 @@ export async function ensureAppSeeds() {
   if (ruleCount === 0) {
     await appDb.rule_hints.bulkPut(builtinRuleHintsSeed);
   }
+
+  await palaceInterpretationService.ensureDefaultLibrarySeeded();
 
   const chartCount = await appDb.charts.count();
   if (chartCount > 0) {

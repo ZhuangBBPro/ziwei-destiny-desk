@@ -8,6 +8,7 @@ import type {
   ChartRecord,
   ChartStarRecord,
   ChartTransformRecord,
+  PalaceInterpretationRecord,
   RuleHintRecord,
   TagRecord,
 } from "@/types";
@@ -24,6 +25,7 @@ export interface AppDatabaseTables {
   case_tags: CaseTagRecord;
   rule_hints: RuleHintRecord;
   case_rule_hint_hits: CaseRuleHintHitRecord;
+  palace_interpretations: PalaceInterpretationRecord;
 }
 
 export const appDbStores: Record<keyof AppDatabaseTables, string> = {
@@ -44,4 +46,20 @@ export const appDbStores: Record<keyof AppDatabaseTables, string> = {
   case_tags: "id, case_id, tag_id, created_at",
   rule_hints: "id, rule_code, category, is_enabled, sort_order, updated_at",
   case_rule_hint_hits: "id, case_id, rule_hint_id, matched_at, created_at, updated_at",
+  palace_interpretations:
+    "id, palace_name, category, is_enabled, sort_order, source, updated_at",
+};
+
+export const appDbStoresV1 = {
+  charts: appDbStores.charts,
+  chart_palaces: appDbStores.chart_palaces,
+  chart_stars: appDbStores.chart_stars,
+  chart_transforms: appDbStores.chart_transforms,
+  case_records: appDbStores.case_records,
+  case_notes: appDbStores.case_notes,
+  case_events: appDbStores.case_events,
+  tags: appDbStores.tags,
+  case_tags: appDbStores.case_tags,
+  rule_hints: appDbStores.rule_hints,
+  case_rule_hint_hits: appDbStores.case_rule_hint_hits,
 };

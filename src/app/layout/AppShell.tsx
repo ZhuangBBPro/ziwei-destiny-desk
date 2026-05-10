@@ -4,6 +4,7 @@ const navItems = [
   { to: "/", label: "Dashboard", end: true },
   { to: "/charts/new", label: "新建命盘" },
   { to: "/cases", label: "案例库" },
+  { to: "/palace-library", label: "宫位文案库" },
   { to: "/settings", label: "设置" },
 ];
 

@@ -56,6 +56,7 @@ export class ExportRepository {
       case_tags,
       rule_hints,
       case_rule_hint_hits,
+      palace_interpretations,
     ] = await Promise.all([
       appDb.charts.toArray(),
       appDb.chart_palaces.toArray(),
@@ -68,6 +69,7 @@ export class ExportRepository {
       appDb.case_tags.toArray(),
       appDb.rule_hints.toArray(),
       appDb.case_rule_hint_hits.toArray(),
+      appDb.palace_interpretations.toArray(),
     ]);
 
     return {
@@ -83,6 +85,7 @@ export class ExportRepository {
       case_tags,
       rule_hints,
       case_rule_hint_hits,
+      palace_interpretations,
     };
   }
 }

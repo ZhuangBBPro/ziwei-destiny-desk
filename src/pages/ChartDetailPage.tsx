@@ -404,12 +404,6 @@ export function ChartDetailPage() {
           </div>
 
           <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap gap-2 text-sm text-[#654b2e]">
-              <span className="rounded-full bg-white/70 px-4 py-2">本命</span>
-              <span className="rounded-full bg-white/70 px-4 py-2">三方四正</span>
-              <span className="rounded-full bg-white/70 px-4 py-2">四化</span>
-            </div>
-
             <div className="flex flex-wrap justify-end gap-2">
               {activeCase ? (
                 <button

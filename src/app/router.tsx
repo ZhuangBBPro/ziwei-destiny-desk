@@ -4,6 +4,7 @@ import { DashboardPage } from "@/pages/DashboardPage";
 import { NewChartPage } from "@/pages/NewChartPage";
 import { CaseLibraryPage } from "@/pages/CaseLibraryPage";
 import { ChartDetailPage } from "@/pages/ChartDetailPage";
+import { PalaceInterpretationLibraryPage } from "@/pages/PalaceInterpretationLibraryPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 
 const routes = [
@@ -22,6 +23,10 @@ const routes = [
       {
         path: "cases",
         element: <CaseLibraryPage />,
+      },
+      {
+        path: "palace-library",
+        element: <PalaceInterpretationLibraryPage />,
       },
       {
         path: "charts/:chartId",

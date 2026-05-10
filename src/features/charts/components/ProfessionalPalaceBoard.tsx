@@ -1,4 +1,11 @@
-import type { ChartPalaceRecord, ChartRecord } from "@/types";
+import { useEffect, useState } from "react";
+import type {
+  ChartPalaceRecord,
+  ChartRecord,
+  PalaceInterpretationCategory,
+  PalaceInterpretationHit,
+} from "@/types";
+import { palaceInterpretationService } from "@/features/charts/services/palaceInterpretationService";
 
 interface ProfessionalPalaceBoardProps {
   chart: ChartRecord;
@@ -89,9 +96,21 @@ interface PalaceBounds {
   centerY: number;
 }
 
+interface InterpretationPopoverState {
+  palaceCode: string;
+  x: number;
+  y: number;
+}
+
 const BOARD_CENTER = {
   x: 2,
   y: 2,
+};
+
+const INTERPRETATION_CATEGORY_LABELS: Record<PalaceInterpretationCategory, string> = {
+  major: "主星",
+  minor: "辅星",
+  misc: "杂星",
 };
 
 export function ProfessionalPalaceBoard({
@@ -106,6 +125,65 @@ export function ProfessionalPalaceBoard({
   const transformEntries = readTransformEntries(chart.snapshot_json);
   const highlightedPalaces = getHighlightedPalaces(orderedPalaces, selectedPalace?.palace_code, transformEntries);
   const defaultTriangleLines = getDefaultTriangleLines(orderedPalaces, selectedPalace?.palace_code);
+  const [interpretationPopover, setInterpretationPopover] = useState<InterpretationPopoverState | null>(null);
+  const activeInterpretationPalace = interpretationPopover
+    ? orderedPalaces.find((palace) => palace.palace_code === interpretationPopover.palaceCode)
+    : undefined;
+  const [interpretationHits, setInterpretationHits] = useState<PalaceInterpretationHit[]>([]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (!activeInterpretationPalace) {
+      setInterpretationHits([]);
+      return () => {
+        isActive = false;
+      };
+    }
+
+    palaceInterpretationService
+      .getHitsForPalace(activeInterpretationPalace)
+      .then((hits) => {
+        if (isActive) {
+          setInterpretationHits(hits);
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to load palace interpretation hits", error);
+        if (isActive) {
+          setInterpretationHits([]);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [activeInterpretationPalace?.id]);
+
+  useEffect(() => {
+    if (!interpretationPopover) {
+      return;
+    }
+
+    const closePopover = () => setInterpretationPopover(null);
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closePopover();
+      }
+    };
+
+    window.addEventListener("click", closePopover);
+    window.addEventListener("resize", closePopover);
+    window.addEventListener("scroll", closePopover, true);
+    window.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      window.removeEventListener("click", closePopover);
+      window.removeEventListener("resize", closePopover);
+      window.removeEventListener("scroll", closePopover, true);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [interpretationPopover]);
 
   return (
     <div className="overflow-hidden rounded-[2rem] border border-[#d4c4a8] bg-[#efe5d3] p-3 shadow-panel md:p-5">
@@ -136,6 +214,15 @@ export function ProfessionalPalaceBoard({
                 type="button"
                 style={{ gridArea: BRANCH_GRID_AREAS[palace.earthly_branch] ?? FALLBACK_GRID_AREAS[index] }}
                 onClick={() => onSelectPalace(palace.palace_code)}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onSelectPalace(palace.palace_code);
+                  setInterpretationPopover({
+                    palaceCode: palace.palace_code,
+                    ...getAdaptivePopoverPosition(event.clientX, event.clientY),
+                  });
+                }}
                 className={buildPalaceCardClass({
                   isSelected: palace.palace_code === selectedPalace?.palace_code,
                   isHighlighted: highlightedPalaces.has(palace.palace_code),
@@ -225,6 +312,15 @@ export function ProfessionalPalaceBoard({
           <DecadeStrip palaces={orderedPalaces} selectedPalaceCode={selectedPalace?.palace_code ?? ""} />
         </div>
       </div>
+
+      {interpretationPopover && activeInterpretationPalace ? (
+        <PalaceInterpretationPopover
+          palace={activeInterpretationPalace}
+          hits={interpretationHits}
+          position={interpretationPopover}
+          onClose={() => setInterpretationPopover(null)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -397,6 +493,130 @@ function TriangleConnectionLayer({ lines }: { lines: ConnectionLine[] }) {
       ) : null}
     </svg>
   );
+}
+
+function PalaceInterpretationPopover({
+  palace,
+  hits,
+  position,
+  onClose,
+}: {
+  palace: ChartPalaceRecord;
+  hits: PalaceInterpretationHit[];
+  position: InterpretationPopoverState;
+  onClose: () => void;
+}) {
+  const groupedHits = groupInterpretationHits(hits);
+
+  return (
+    <div
+      role="dialog"
+      aria-label={`${palace.palace_name}命中文案`}
+      style={{
+        left: position.x,
+        top: position.y,
+        width: "min(420px, calc(100vw - 24px))",
+        maxHeight: "min(620px, calc(100vh - 24px))",
+      }}
+      className="fixed z-[90] overflow-hidden rounded-[1.4rem] border border-[#c9b18d] bg-[#fffaf0] shadow-[0_24px_70px_rgba(56,38,18,0.26)]"
+      onClick={(event) => event.stopPropagation()}
+      onContextMenu={(event) => event.preventDefault()}
+    >
+      <div className="flex items-start justify-between gap-3 border-b border-[#e0cfb2] bg-[#f5ead8] px-4 py-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.28em] text-[#9b7f52]">右键命中文案</p>
+          <h3 className="mt-1 font-serif text-lg text-[#2f1b0d]">
+            {palace.palace_name} · {palace.heavenly_stem}{palace.earthly_branch}
+          </h3>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-full border border-[#d8c5a7] bg-white/80 px-2.5 py-1 text-xs text-[#6e5840] transition hover:border-[#7e2c2c] hover:text-[#7e2c2c]"
+        >
+          关闭
+        </button>
+      </div>
+
+      <div className="max-h-[calc(100vh-100px)] overflow-y-auto px-4 py-3">
+        {hits.length > 0 ? (
+          <div className="space-y-4">
+            {(["major", "minor", "misc"] as PalaceInterpretationCategory[]).map((category) => {
+              const categoryHits = groupedHits.get(category) ?? [];
+              if (categoryHits.length === 0) {
+                return null;
+              }
+
+              return (
+                <section key={category} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="h-px flex-1 bg-[#dec8a5]" />
+                    <span className="rounded-full bg-[#efe1ca] px-3 py-1 text-xs font-medium text-[#6f5030]">
+                      {INTERPRETATION_CATEGORY_LABELS[category]}
+                    </span>
+                    <span className="h-px flex-1 bg-[#dec8a5]" />
+                  </div>
+
+                  {categoryHits.map((hit, index) => (
+                    <article
+                      key={`${hit.category}-${hit.title}-${index}`}
+                      className="rounded-2xl border border-[#e2cfaf] bg-white/75 p-3"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="font-serif text-base text-[#3a2413]">{hit.title}</h4>
+                        <span className="rounded-full bg-[#f4ead8] px-2 py-0.5 text-[10px] text-[#7b5d39]">
+                          命中：{dedupeText(hit.matchedStars).join("、")}
+                        </span>
+                      </div>
+                      <div className="mt-2 space-y-1.5 text-xs leading-5 text-[#4c3825]">
+                        {hit.content.map((line, lineIndex) => (
+                          <p key={`${hit.title}-${lineIndex}`}>{line}</p>
+                        ))}
+                      </div>
+                    </article>
+                  ))}
+                </section>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-[#d8c5a7] bg-white/60 p-4 text-sm leading-6 text-[#6e5840]">
+            {isParentPalaceName(palace.palace_name)
+              ? "父母宫文案还在整理中，第一版先不展示。"
+              : "当前宫位的主星、辅星、杂星暂未命中文案。后续可以继续补充该宫位或星曜条目。"}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function groupInterpretationHits(hits: PalaceInterpretationHit[]) {
+  return hits.reduce((groups, hit) => {
+    const current = groups.get(hit.category) ?? [];
+    current.push(hit);
+    groups.set(hit.category, current);
+    return groups;
+  }, new Map<PalaceInterpretationCategory, PalaceInterpretationHit[]>());
+}
+
+function getAdaptivePopoverPosition(clientX: number, clientY: number) {
+  const margin = 12;
+  const width = Math.min(420, window.innerWidth - margin * 2);
+  const height = Math.min(620, window.innerHeight - margin * 2);
+
+  return {
+    x: Math.min(Math.max(clientX + margin, margin), window.innerWidth - width - margin),
+    y: Math.min(Math.max(clientY + margin, margin), window.innerHeight - height - margin),
+  };
+}
+
+function dedupeText(items: string[]) {
+  return [...new Set(items)];
+}
+
+function isParentPalaceName(palaceName: string) {
+  return palaceName === "父母" || palaceName === "父母宫" || palaceName === "父母宮";
 }
 
 function getStarTextClass(starName: string, tone: "major" | "minor" | "misc") {
