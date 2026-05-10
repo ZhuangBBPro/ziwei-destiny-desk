@@ -46,9 +46,105 @@ const VIEW_MODE_LABEL: Record<BoardViewMode, string> = {
   transforms: "四化飞星",
 };
 
+const AUSPICIOUS_STARS = new Set([
+  "左輔",
+  "左辅",
+  "右弼",
+  "文昌",
+  "文曲",
+  "天魁",
+  "天鉞",
+  "天钺",
+  "祿存",
+  "禄存",
+  "天馬",
+  "天马",
+  "天喜",
+  "紅鸞",
+  "红鸾",
+  "天德",
+  "月德",
+  "天官",
+  "天福",
+  "天貴",
+  "天贵",
+  "龍池",
+  "龙池",
+  "鳳閣",
+  "凤阁",
+  "恩光",
+  "天壽",
+  "天寿",
+  "台輔",
+  "台辅",
+  "封誥",
+  "封诰",
+  "三台",
+  "八座",
+  "解神",
+  "天才",
+  "天巫",
+  "博士",
+  "天廚",
+  "天厨",
+]);
+
+const MALEFIC_STARS = new Set([
+  "擎羊",
+  "陀羅",
+  "陀罗",
+  "火星",
+  "鈴星",
+  "铃星",
+  "地空",
+  "地劫",
+  "天刑",
+  "天傷",
+  "天伤",
+  "天使",
+  "劫煞",
+  "災煞",
+  "灾煞",
+  "大耗",
+  "小耗",
+  "破碎",
+  "天哭",
+  "天虛",
+  "天虚",
+  "陰煞",
+  "阴煞",
+  "孤辰",
+  "寡宿",
+  "蜚廉",
+  "天空",
+  "截空",
+  "旬空",
+  "咸池",
+  "病符",
+  "官符",
+  "歲破",
+  "岁破",
+  "喪門",
+  "丧门",
+  "白虎",
+  "吊客",
+]);
+
 interface TransformEntry {
   derivative: string;
   starName: string;
+}
+
+interface ConnectionLine {
+  from: {
+    x: number;
+    y: number;
+  };
+  to: {
+    x: number;
+    y: number;
+  };
+  tone: "opposite" | "triangle";
 }
 
 export function ProfessionalPalaceBoard({
@@ -61,8 +157,10 @@ export function ProfessionalPalaceBoard({
   const orderedPalaces = normalizeNatalPalaces(palaces);
   const selectedPalace =
     orderedPalaces.find((palace) => palace.palace_code === selectedPalaceCode) ?? orderedPalaces[0];
+  const lifePalace = orderedPalaces.find((palace) => palace.palace_code === "life") ?? orderedPalaces[0];
   const transformEntries = readTransformEntries(chart.snapshot_json);
   const highlightedPalaces = getHighlightedPalaces(orderedPalaces, selectedPalace?.palace_code, viewMode, transformEntries);
+  const defaultTriangleLines = getDefaultTriangleLines(orderedPalaces, lifePalace?.palace_code);
 
   return (
     <div className="overflow-hidden rounded-[2rem] border border-[#d4c4a8] bg-[#efe5d3] p-3 shadow-panel md:p-5">
@@ -82,9 +180,11 @@ export function ProfessionalPalaceBoard({
       <div className="pb-2">
         <div className="mx-auto w-full max-w-[1180px]">
           <div
-            className="grid aspect-square w-full grid-cols-4 grid-rows-4 gap-1.5 md:gap-2 xl:gap-3"
+            className="relative grid aspect-square w-full grid-cols-4 grid-rows-4 gap-1.5 md:gap-2 xl:gap-3"
             style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}
           >
+            <TriangleConnectionLayer lines={defaultTriangleLines} />
+
             {orderedPalaces.map((palace, index) => (
               <button
                 key={palace.id}
@@ -228,7 +328,7 @@ function PalaceFace({
         </div>
       </div>
 
-      <div className="mt-2 flex-1 min-h-0 space-y-1 text-[9px] leading-4 md:text-[10px] md:leading-[1.15rem] xl:mt-2 xl:space-y-1.5 xl:text-[11px]">
+      <div className="mt-2 flex-1 min-h-0 space-y-1 text-[11px] leading-4 md:text-[12px] md:leading-[1.15rem] xl:mt-2 xl:space-y-1.5 xl:text-[13px]">
         <StarLine
           label="主"
           stars={palace.major_stars_summary}
@@ -279,13 +379,6 @@ function StarLine({
   emptyLabel: string;
   showTransforms: boolean;
 }) {
-  const toneClass =
-    tone === "major"
-      ? "text-[#7e2c2c]"
-      : tone === "minor"
-        ? "text-[#235f8d]"
-        : "text-[#4f5562]";
-
   if (stars.length === 0) {
     return (
       <div className="flex gap-2">
@@ -298,11 +391,14 @@ function StarLine({
   return (
     <div className="flex min-w-0 gap-1.5">
       <span className="min-w-4 shrink-0 text-[10px] uppercase tracking-[0.14em] text-[#b28d61]">{label}</span>
-      <div className={`min-w-0 flex flex-wrap gap-x-1.5 gap-y-0.5 break-all ${toneClass}`}>
+      <div className="min-w-0 flex flex-wrap gap-x-1.5 gap-y-0.5 break-all">
         {stars.map((star) => {
           const derivative = transforms.find((item) => item.starName === star)?.derivative;
           return (
-            <span key={`${label}-${star}`} className="inline-flex min-w-0 items-center gap-1 break-all">
+            <span
+              key={`${label}-${star}`}
+              className={`inline-flex min-w-0 items-center gap-1 break-all ${getStarTextClass(star, tone)}`}
+            >
               <span>{star}</span>
               {showTransforms && derivative ? (
                 <span className="rounded bg-[#d9472f] px-1 py-0.5 text-[10px] leading-none text-white">
@@ -315,6 +411,74 @@ function StarLine({
       </div>
     </div>
   );
+}
+
+function TriangleConnectionLayer({ lines }: { lines: ConnectionLine[] }) {
+  if (lines.length === 0) {
+    return null;
+  }
+
+  return (
+    <svg
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 z-10 h-full w-full overflow-visible text-[#7e2c2c]"
+      viewBox="0 0 4 4"
+      preserveAspectRatio="none"
+    >
+      {lines.map((line, index) => (
+        <line
+          key={`${line.tone}-${index}`}
+          x1={line.from.x}
+          y1={line.from.y}
+          x2={line.to.x}
+          y2={line.to.y}
+          stroke={line.tone === "opposite" ? "#7e2c2c" : "#2f7b66"}
+          strokeWidth={line.tone === "opposite" ? 0.022 : 0.018}
+          strokeDasharray={line.tone === "opposite" ? "0.09 0.07" : "0.075 0.07"}
+          strokeLinecap="round"
+          opacity={line.tone === "opposite" ? 0.72 : 0.62}
+          vectorEffect="non-scaling-stroke"
+        />
+      ))}
+      {lines[0] ? (
+        <circle
+          cx={lines[0].from.x}
+          cy={lines[0].from.y}
+          r={0.035}
+          fill="#7e2c2c"
+          opacity={0.72}
+          vectorEffect="non-scaling-stroke"
+        />
+      ) : null}
+    </svg>
+  );
+}
+
+function getStarTextClass(starName: string, tone: "major" | "minor" | "misc") {
+  const sizeClass =
+    tone === "major"
+      ? "text-[13px] font-semibold md:text-[14px] xl:text-[15px]"
+      : tone === "minor"
+        ? "text-[12px] md:text-[13px] xl:text-[14px]"
+        : "text-[11px] md:text-[12px] xl:text-[13px]";
+
+  if (MALEFIC_STARS.has(starName)) {
+    return `${sizeClass} text-[#111827]`;
+  }
+
+  if (AUSPICIOUS_STARS.has(starName)) {
+    return `${sizeClass} text-[#7b2cbf]`;
+  }
+
+  if (tone === "major") {
+    return `${sizeClass} text-[#7e2c2c]`;
+  }
+
+  if (tone === "minor") {
+    return `${sizeClass} text-[#235f8d]`;
+  }
+
+  return `${sizeClass} text-[#4f5562]`;
 }
 
 function DecadeStrip({
@@ -523,6 +687,67 @@ function getHighlightedPalaces(
   }
 
   return map;
+}
+
+function getDefaultTriangleLines(
+  palaces: ChartPalaceRecord[],
+  basePalaceCode: string | undefined,
+): ConnectionLine[] {
+  const baseIndex = palaces.findIndex((item) => item.palace_code === basePalaceCode);
+  if (baseIndex < 0) {
+    return [];
+  }
+
+  const basePalace = palaces[baseIndex];
+  const opposite = palaces[(baseIndex + 6) % palaces.length];
+  const triadA = palaces[(baseIndex + 4) % palaces.length];
+  const triadB = palaces[(baseIndex + 8) % palaces.length];
+  const basePoint = getPalaceCenterPoint(basePalace);
+
+  if (!basePoint) {
+    return [];
+  }
+
+  return [
+    { palace: opposite, tone: "opposite" as const },
+    { palace: triadA, tone: "triangle" as const },
+    { palace: triadB, tone: "triangle" as const },
+  ].flatMap((item) => {
+    const point = getPalaceCenterPoint(item.palace);
+    return point
+      ? [
+          {
+            from: basePoint,
+            to: point,
+            tone: item.tone,
+          },
+        ]
+      : [];
+  });
+}
+
+function getPalaceCenterPoint(palace: ChartPalaceRecord | undefined) {
+  if (!palace) {
+    return null;
+  }
+
+  const gridArea = BRANCH_GRID_AREAS[palace.earthly_branch];
+  if (!gridArea) {
+    return null;
+  }
+
+  const match = gridArea.match(/^(\d+) \/ (\d+) \/ (\d+) \/ (\d+)$/);
+  if (!match) {
+    return null;
+  }
+
+  const rowStart = Number(match[1]);
+  const columnStart = Number(match[2]);
+
+  return {
+    x: columnStart - 0.5,
+    y: rowStart - 0.5,
+  };
 }
 
 function normalizeNatalPalaces(palaces: ChartPalaceRecord[]) {
