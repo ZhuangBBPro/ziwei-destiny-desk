@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { CardSection } from "@/components/ui/CardSection";
@@ -11,6 +11,7 @@ import {
 } from "@/features/charts/schemas/chartFormSchema";
 import { chartService } from "@/features/charts/services/chartService";
 import { AppError } from "@/lib/errors";
+import type { BirthCalendarType } from "@/types";
 
 const defaultValues: ChartFormValues = {
   subject_name: "",
@@ -25,13 +26,35 @@ const defaultValues: ChartFormValues = {
   remarks: "",
 };
 
+type DatePart = "year" | "month" | "day";
+
+interface BirthDateParts {
+  year: string;
+  month: string;
+  day: string;
+}
+
+const EMPTY_BIRTH_DATE_PARTS: BirthDateParts = {
+  year: "",
+  month: "",
+  day: "",
+};
+
+const YEAR_OPTIONS = Array.from({ length: new Date().getFullYear() - 1899 }, (_, index) =>
+  String(new Date().getFullYear() - index),
+);
+
+const MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0"));
+
 export function NewChartPage() {
   const navigate = useNavigate();
   const [submitError, setSubmitError] = useState("");
+  const [birthDateParts, setBirthDateParts] = useState<BirthDateParts>(EMPTY_BIRTH_DATE_PARTS);
   const {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<ChartFormValues>({
     resolver: zodResolver(chartFormSchema),
@@ -39,6 +62,30 @@ export function NewChartPage() {
   });
 
   const birthCalendarType = watch("birth_calendar_type");
+
+  useEffect(() => {
+    setBirthDateParts((currentParts) => clampBirthDateParts(currentParts, birthCalendarType));
+  }, [birthCalendarType]);
+
+  useEffect(() => {
+    const formattedDate = formatBirthDateParts(birthDateParts);
+    setValue("birth_date", formattedDate, {
+      shouldDirty: Boolean(formattedDate),
+      shouldValidate: Boolean(errors.birth_date),
+    });
+  }, [birthDateParts, errors.birth_date, setValue]);
+
+  function handleBirthDatePartChange(part: DatePart, value: string) {
+    setBirthDateParts((currentParts) =>
+      clampBirthDateParts(
+        {
+          ...currentParts,
+          [part]: value,
+        },
+        birthCalendarType,
+      ),
+    );
+  }
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError("");
@@ -101,16 +148,16 @@ export function NewChartPage() {
             <span className="text-sm font-medium text-slate-700">
               {birthCalendarType === "lunar" ? "农历出生日期" : "阳历出生日期"}
             </span>
-            <input
-              type={birthCalendarType === "lunar" ? "text" : "date"}
-              {...register("birth_date")}
-              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3"
-              placeholder={birthCalendarType === "lunar" ? "例如：1978-06-23 或 19780623" : undefined}
+            <BirthDateSelector
+              calendarType={birthCalendarType}
+              parts={birthDateParts}
+              onChange={handleBirthDatePartChange}
             />
+            <input type="hidden" {...register("birth_date")} />
             <p className="mt-1 text-xs text-slate-500">
               {birthCalendarType === "lunar"
-                ? "当前按农历年月日排盘；如果是闰月，请勾选下方“农历闰月”。"
-                : "当前按阳历年月日排盘。"}
+                ? "当前按农历年月日排盘，日期会统一保存为 YYYY-MM-DD；如果是闰月，请勾选下方“农历闰月”。"
+                : "当前按阳历年月日排盘，日期会统一保存为 YYYY-MM-DD。"}
             </p>
             <FieldError message={errors.birth_date?.message} />
           </label>
@@ -189,4 +236,91 @@ export function NewChartPage() {
       </form>
     </CardSection>
   );
+}
+
+function BirthDateSelector({
+  calendarType,
+  parts,
+  onChange,
+}: {
+  calendarType: BirthCalendarType;
+  parts: BirthDateParts;
+  onChange: (part: DatePart, value: string) => void;
+}) {
+  const dayOptions = getDayOptions(calendarType, parts.year, parts.month);
+
+  return (
+    <div className="mt-2 grid grid-cols-[1.35fr_1fr_1fr] gap-2">
+      <select
+        value={parts.year}
+        onChange={(event) => onChange("year", event.target.value)}
+        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-700"
+        aria-label="选择出生年份"
+      >
+        <option value="">选择日期</option>
+        {YEAR_OPTIONS.map((year) => (
+          <option key={year} value={year}>
+            {year}年
+          </option>
+        ))}
+      </select>
+      <select
+        value={parts.month}
+        onChange={(event) => onChange("month", event.target.value)}
+        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-700"
+        aria-label="选择出生月份"
+      >
+        <option value="">月</option>
+        {MONTH_OPTIONS.map((month) => (
+          <option key={month} value={month}>
+            {Number(month)}月
+          </option>
+        ))}
+      </select>
+      <select
+        value={parts.day}
+        onChange={(event) => onChange("day", event.target.value)}
+        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-700"
+        aria-label="选择出生日期"
+      >
+        <option value="">日</option>
+        {dayOptions.map((day) => (
+          <option key={day} value={day}>
+            {Number(day)}日
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function formatBirthDateParts(parts: BirthDateParts) {
+  return parts.year && parts.month && parts.day ? `${parts.year}-${parts.month}-${parts.day}` : "";
+}
+
+function clampBirthDateParts(parts: BirthDateParts, calendarType: BirthCalendarType): BirthDateParts {
+  const maxDay = getMaxDay(calendarType, parts.year, parts.month);
+  const day = parts.day && Number(parts.day) <= maxDay ? parts.day : "";
+
+  return {
+    ...parts,
+    day,
+  };
+}
+
+function getDayOptions(calendarType: BirthCalendarType, year: string, month: string) {
+  const maxDay = getMaxDay(calendarType, year, month);
+  return Array.from({ length: maxDay }, (_, index) => String(index + 1).padStart(2, "0"));
+}
+
+function getMaxDay(calendarType: BirthCalendarType, year: string, month: string) {
+  if (calendarType === "lunar") {
+    return 30;
+  }
+
+  if (!year || !month) {
+    return 31;
+  }
+
+  return new Date(Number(year), Number(month), 0).getDate();
 }

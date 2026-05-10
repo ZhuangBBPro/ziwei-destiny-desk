@@ -26,8 +26,8 @@ export const chartFormSchema = z.object({
     .string()
     .trim()
     .regex(
-      /^(\d{4}[./-]\d{1,2}[./-]\d{1,2}|\d{8})$/,
-      "请输入合法日期，格式为 YYYY-MM-DD、YYYY.M.D 或 YYYYMMDD",
+      /^\d{4}-\d{2}-\d{2}$/,
+      "请选择出生日期",
     ),
   birth_time: z
     .string()
