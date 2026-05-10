@@ -92,7 +92,22 @@ function parseBirthDate(input: string) {
   };
 }
 
-function assertValidBirthDate(
+function assertValidSolarDate(
+  input: ZiweiCreateConfigInput,
+  date: { year: number; month: number; day: number },
+) {
+  const { year, month, day } = date;
+  const nativeDate = new Date(Date.UTC(year, month - 1, day));
+  if (
+    nativeDate.getUTCFullYear() !== year ||
+    nativeDate.getUTCMonth() !== month - 1 ||
+    nativeDate.getUTCDate() !== day
+  ) {
+    throw new AppError("阳历出生日期不存在，请重新检查年月日。", "INVALID_SOLAR_DATE", input);
+  }
+}
+
+function resolveSolarBirthDate(
   bridge: ZiweiLibraryBridge,
   input: ZiweiCreateConfigInput,
   date: { year: number; month: number; day: number },
@@ -100,19 +115,28 @@ function assertValidBirthDate(
   const { year, month, day } = date;
 
   if (input.birth_calendar_type === "solar") {
-    const nativeDate = new Date(Date.UTC(year, month - 1, day));
-    if (
-      nativeDate.getUTCFullYear() !== year ||
-      nativeDate.getUTCMonth() !== month - 1 ||
-      nativeDate.getUTCDate() !== day
-    ) {
-      throw new AppError("阳历出生日期不存在，请重新检查年月日。", "INVALID_SOLAR_DATE", input);
-    }
-    return;
+    assertValidSolarDate(input, date);
+    return date;
+  }
+
+  const lunar2solar = bridge.defaultCalendar?.lunar2solar;
+  if (!lunar2solar) {
+    throw new AppError(
+      "农历转阳历失败：排盘库未提供农历转换能力。",
+      "LUNAR_CONVERTER_NOT_AVAILABLE",
+      input,
+    );
   }
 
   try {
-    bridge.defaultCalendar?.lunar2solar?.(year, month, day, input.leap_month_flag);
+    const convertedDate = lunar2solar(year, month, day, input.leap_month_flag);
+    const solarDate = {
+      year: convertedDate.solarYear,
+      month: convertedDate.solarMonth,
+      day: convertedDate.solarDay,
+    };
+    assertValidSolarDate(input, solarDate);
+    return solarDate;
   } catch (error) {
     throw new AppError(
       input.leap_month_flag
@@ -131,27 +155,21 @@ function mapGender(bridge: ZiweiLibraryBridge, gender: ZiweiCreateConfigInput["g
 export async function createRawZiweiBoard(input: ZiweiCreateConfigInput): Promise<ZiweiRawBoard> {
   const bridge = await loadZiweiBridge();
   const { year, month, day } = parseBirthDate(input.birth_date);
-  assertValidBirthDate(bridge, input, { year, month, day });
+  const solarBirthDate = resolveSolarBirthDate(bridge, input, { year, month, day });
   const timeGroundMapping = requireTimeGround(input.birth_time);
   const bornTimeGround = bridge.DayTimeGround.getByName(timeGroundMapping.libraryName);
 
   try {
     const builderInput = {
-      year,
-      month,
-      day,
+      year: solarBirthDate.year,
+      month: solarBirthDate.month,
+      day: solarBirthDate.day,
       bornTimeGround,
       configType: bridge.ConfigType.SKY,
       gender: mapGender(bridge, input.gender),
     };
 
-    const config =
-      input.birth_calendar_type === "solar"
-        ? bridge.DestinyConfigBuilder.withSolar(builderInput)
-        : bridge.DestinyConfigBuilder.withlunar({
-            ...builderInput,
-            isLeapMonth: input.leap_month_flag,
-          });
+    const config = bridge.DestinyConfigBuilder.withSolar(builderInput);
 
     return new bridge.DestinyBoard(config);
   } catch (error) {

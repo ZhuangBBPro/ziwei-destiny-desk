@@ -4,11 +4,8 @@ import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { CardSection } from "@/components/ui/CardSection";
 import { FieldError } from "@/components/ui/FieldError";
-import {
-  chartFormSchema,
-  normalizeBirthDateInput,
-  type ChartFormValues,
-} from "@/features/charts/schemas/chartFormSchema";
+import { LocationPicker } from "@/features/charts/components/LocationPicker";
+import { chartFormSchema, type ChartFormValues } from "@/features/charts/schemas/chartFormSchema";
 import { chartService } from "@/features/charts/services/chartService";
 import { AppError } from "@/lib/errors";
 import type { BirthCalendarType } from "@/types";
@@ -62,6 +59,7 @@ export function NewChartPage() {
   });
 
   const birthCalendarType = watch("birth_calendar_type");
+  const birthLocation = watch("birth_location");
 
   useEffect(() => {
     setBirthDateParts((currentParts) => clampBirthDateParts(currentParts, birthCalendarType));
@@ -90,10 +88,7 @@ export function NewChartPage() {
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError("");
     try {
-      const aggregate = await chartService.createChart({
-        ...values,
-        birth_date: normalizeBirthDateInput(values.birth_date),
-      });
+      const aggregate = await chartService.createChart(values);
       navigate(`/charts/${aggregate.chart.id}`);
     } catch (error) {
       console.error("Failed to create chart", error);
@@ -156,7 +151,7 @@ export function NewChartPage() {
             <input type="hidden" {...register("birth_date")} />
             <p className="mt-1 text-xs text-slate-500">
               {birthCalendarType === "lunar"
-                ? "当前按农历年月日排盘，日期会统一保存为 YYYY-MM-DD；如果是闰月，请勾选下方“农历闰月”。"
+                ? "当前按农历年月日录入，提交时会先转成阳历再排盘；如果是闰月，请勾选下方“农历闰月”。"
                 : "当前按阳历年月日排盘，日期会统一保存为 YYYY-MM-DD。"}
             </p>
             <FieldError message={errors.birth_date?.message} />
@@ -182,15 +177,21 @@ export function NewChartPage() {
             <FieldError message={errors.birth_timezone?.message} />
           </label>
 
-          <label className="block md:col-span-2">
+          <div className="block md:col-span-2">
             <span className="text-sm font-medium text-slate-700">出生地点</span>
-            <input
-              {...register("birth_location")}
-              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3"
-              placeholder="第一版仅做文本保存"
+            <LocationPicker
+              value={birthLocation}
+              onChange={(location) =>
+                setValue("birth_location", location, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
+              }
             />
+            <input type="hidden" {...register("birth_location")} />
+            <p className="mt-1 text-xs text-slate-500">第一版用于文本保存；真太阳时换算暂不使用地点。</p>
             <FieldError message={errors.birth_location?.message} />
-          </label>
+          </div>
 
           {birthCalendarType === "lunar" ? (
             <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">

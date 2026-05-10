@@ -1,23 +1,6 @@
 import { z } from "zod";
 import { normalizeTimeGroundInput } from "@/features/charts/lib/timeGroundMapper";
 
-export function normalizeBirthDateInput(input: string) {
-  const trimmed = input.trim();
-  const compactMatch = trimmed.match(/^(\d{4})(\d{2})(\d{2})$/);
-  if (compactMatch) {
-    return `${compactMatch[1]}-${compactMatch[2]}-${compactMatch[3]}`;
-  }
-  const separatedMatch = trimmed.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})$/);
-  if (separatedMatch) {
-    return [
-      separatedMatch[1],
-      separatedMatch[2].padStart(2, "0"),
-      separatedMatch[3].padStart(2, "0"),
-    ].join("-");
-  }
-  return trimmed;
-}
-
 export const chartFormSchema = z.object({
   subject_name: z.string().trim().min(1, "请输入姓名或代号"),
   gender: z.enum(["male", "female"], { message: "请选择性别" }),

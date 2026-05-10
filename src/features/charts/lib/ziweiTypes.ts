@@ -4,7 +4,6 @@ export interface ZiweiLibraryBridge {
   DestinyBoard: new (config: unknown) => ZiweiRawBoard;
   DestinyConfigBuilder: {
     withSolar(input: Record<string, unknown>): unknown;
-    withlunar(input: Record<string, unknown>): unknown;
   };
   DayTimeGround: {
     getByName(name: string): unknown;
@@ -17,7 +16,12 @@ export interface ZiweiLibraryBridge {
     F: unknown;
   };
   defaultCalendar?: {
-    lunar2solar?: (year: number, month: number, day: number, isLeapMonth?: boolean) => unknown;
+    lunar2solar?: (
+      year: number,
+      month: number,
+      day: number,
+      isLeapMonth?: boolean,
+    ) => { solarYear: number; solarMonth: number; solarDay: number };
   };
   BoardCriteria?: new (board: unknown) => unknown;
   Temple?: Record<string, unknown>;

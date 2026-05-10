@@ -91,7 +91,7 @@ npm run build
 - 页面层不直接依赖 `fortel-ziweidoushu`
 - 当前实现按以下策略封装：
   - 阳历使用 `DestinyConfigBuilder.withSolar(...)`
-  - 农历使用 `DestinyConfigBuilder.withlunar(...)`
+  - 农历先使用库内 `defaultCalendar.lunar2solar(...)` 转为阳历，再统一使用 `DestinyConfigBuilder.withSolar(...)`
   - 性别映射到库内 `Gender`
   - 时辰通过 `DayTimeGround.getByName(...)` 映射
   - `configType` 默认使用 `ConfigType.SKY`
