@@ -174,13 +174,11 @@ export function ProfessionalPalaceBoard({
 
     window.addEventListener("click", closePopover);
     window.addEventListener("resize", closePopover);
-    window.addEventListener("scroll", closePopover, true);
     window.addEventListener("keydown", closeOnEscape);
 
     return () => {
       window.removeEventListener("click", closePopover);
       window.removeEventListener("resize", closePopover);
-      window.removeEventListener("scroll", closePopover, true);
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [interpretationPopover]);
