@@ -80,6 +80,15 @@ interface ConnectionLine {
   tone: "opposite" | "triangle";
 }
 
+interface PalaceBounds {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  centerX: number;
+  centerY: number;
+}
+
 export function ProfessionalPalaceBoard({
   chart,
   palaces,
@@ -89,10 +98,9 @@ export function ProfessionalPalaceBoard({
   const orderedPalaces = normalizeNatalPalaces(palaces);
   const selectedPalace =
     orderedPalaces.find((palace) => palace.palace_code === selectedPalaceCode) ?? orderedPalaces[0];
-  const lifePalace = orderedPalaces.find((palace) => palace.palace_code === "life") ?? orderedPalaces[0];
   const transformEntries = readTransformEntries(chart.snapshot_json);
   const highlightedPalaces = getHighlightedPalaces(orderedPalaces, selectedPalace?.palace_code, transformEntries);
-  const defaultTriangleLines = getDefaultTriangleLines(orderedPalaces, lifePalace?.palace_code);
+  const defaultTriangleLines = getDefaultTriangleLines(orderedPalaces, selectedPalace?.palace_code);
 
   return (
     <div className="overflow-hidden rounded-[2rem] border border-[#d4c4a8] bg-[#efe5d3] p-3 shadow-panel md:p-5">
@@ -394,6 +402,10 @@ function getStarTextClass(starName: string, tone: "major" | "minor" | "misc") {
         ? "text-[12px] md:text-[13px] xl:text-[14px]"
         : "text-[11px] md:text-[12px] xl:text-[13px]";
 
+  if (tone === "misc") {
+    return `${sizeClass} text-[#235f8d]`;
+  }
+
   if (MALEFIC_STARS.has(starName)) {
     return `${sizeClass} text-[#111827]`;
   }
@@ -410,7 +422,7 @@ function getStarTextClass(starName: string, tone: "major" | "minor" | "misc") {
     return `${sizeClass} text-[#235f8d]`;
   }
 
-  return `${sizeClass} text-[#4f5562]`;
+  return `${sizeClass} text-[#235f8d]`;
 }
 
 function DecadeStrip({
@@ -631,9 +643,9 @@ function getDefaultTriangleLines(
   const opposite = palaces[(baseIndex + 6) % palaces.length];
   const triadA = palaces[(baseIndex + 4) % palaces.length];
   const triadB = palaces[(baseIndex + 8) % palaces.length];
-  const basePoint = getPalaceCenterPoint(basePalace);
+  const baseBounds = getPalaceBounds(basePalace);
 
-  if (!basePoint) {
+  if (!baseBounds) {
     return [];
   }
 
@@ -642,12 +654,13 @@ function getDefaultTriangleLines(
     { palace: triadA, tone: "triangle" as const },
     { palace: triadB, tone: "triangle" as const },
   ].flatMap((item) => {
-    const point = getPalaceCenterPoint(item.palace);
-    return point
+    const targetBounds = getPalaceBounds(item.palace);
+    const edgePoints = targetBounds ? getEdgeConnectionPoints(baseBounds, targetBounds) : null;
+    return edgePoints
       ? [
           {
-            from: basePoint,
-            to: point,
+            from: edgePoints.from,
+            to: edgePoints.to,
             tone: item.tone,
           },
         ]
@@ -655,7 +668,7 @@ function getDefaultTriangleLines(
   });
 }
 
-function getPalaceCenterPoint(palace: ChartPalaceRecord | undefined) {
+function getPalaceBounds(palace: ChartPalaceRecord | undefined): PalaceBounds | null {
   if (!palace) {
     return null;
   }
@@ -674,8 +687,34 @@ function getPalaceCenterPoint(palace: ChartPalaceRecord | undefined) {
   const columnStart = Number(match[2]);
 
   return {
-    x: columnStart - 0.5,
-    y: rowStart - 0.5,
+    left: columnStart - 1,
+    right: columnStart,
+    top: rowStart - 1,
+    bottom: rowStart,
+    centerX: columnStart - 0.5,
+    centerY: rowStart - 0.5,
+  };
+}
+
+function getEdgeConnectionPoints(from: PalaceBounds, to: PalaceBounds) {
+  const dx = to.centerX - from.centerX;
+  const dy = to.centerY - from.centerY;
+  const fromScaleX = dx === 0 ? Number.POSITIVE_INFINITY : Math.abs(0.5 / dx);
+  const fromScaleY = dy === 0 ? Number.POSITIVE_INFINITY : Math.abs(0.5 / dy);
+  const toScaleX = dx === 0 ? Number.POSITIVE_INFINITY : Math.abs(0.5 / dx);
+  const toScaleY = dy === 0 ? Number.POSITIVE_INFINITY : Math.abs(0.5 / dy);
+  const fromScale = Math.min(fromScaleX, fromScaleY);
+  const toScale = Math.min(toScaleX, toScaleY);
+
+  return {
+    from: {
+      x: from.centerX + dx * fromScale,
+      y: from.centerY + dy * fromScale,
+    },
+    to: {
+      x: to.centerX - dx * toScale,
+      y: to.centerY - dy * toScale,
+    },
   };
 }
 
