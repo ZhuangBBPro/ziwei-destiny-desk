@@ -182,6 +182,10 @@ export async function createRawZiweiBoard(input: ZiweiCreateConfigInput): Promis
   }
 }
 
+export async function preloadZiweiEngine() {
+  await loadZiweiBridge();
+}
+
 export async function getZiweiCriteriaBridge() {
   return loadZiweiBridge();
 }

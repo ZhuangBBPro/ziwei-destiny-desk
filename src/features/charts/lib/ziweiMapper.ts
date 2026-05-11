@@ -125,6 +125,7 @@ export function mapRawZiweiBoard(board: ZiweiRawBoard): ZiweiMappedBoard {
   if (!serializedBoard.config || cells.length === 0) {
     throw new AppError("排盘结果不完整，无法建立命盘快照。", "ZIWEI_BOARD_INCOMPLETE", board);
   }
+  const cellSnapshots = cells.map((cell) => toPlainJson(cell));
 
   const palaces = cells.flatMap((cell, index) => {
     const temples = Array.isArray(cell.temples) ? cell.temples.map(readName).map(normalizeTempleName) : [];
@@ -148,19 +149,7 @@ export function mapRawZiweiBoard(board: ZiweiRawBoard): ZiweiMappedBoard {
       minor_stars_summary: [...minorStars, ...miniStars].map((item) => item.star_name),
       sha_stars_summary: miscStars.map((item) => item.star_name),
       display_order: index,
-      palace_snapshot_json: toPlainJson({
-        sky: cell.sky,
-        ground: cell.ground,
-        temples: cell.temples,
-        majorStars: cell.majorStars,
-        minorStars: cell.minorStars,
-        miniStars: cell.miniStars,
-        miscStars: cell.miscStars,
-        ageStart: cell.ageStart,
-        ageEnd: cell.ageEnd,
-        ageRange: cell.ageRange,
-        lifeStage: cell.lifeStage,
-      }),
+      palace_snapshot_json: cellSnapshots[index],
     }));
   });
 
@@ -219,7 +208,7 @@ export function mapRawZiweiBoard(board: ZiweiRawBoard): ZiweiMappedBoard {
       element: readName(serializedBoard.element),
       destinyMaster: readName(serializedBoard.destinyMaster),
       bodyMaster: readName(serializedBoard.bodyMaster),
-      cells: cells.map((cell) => toPlainJson(cell)),
+      cells: cellSnapshots,
       bornStarDerivativeMap: toPlainJson(
         (serializedBoard as Record<string, unknown>).bornStarDerivativeMap ??
           (board as Record<string, unknown>).bornStarDerivativeMap,
@@ -254,7 +243,7 @@ export function buildChartAggregate(
     life_master_star: mappedBoard.life_master_star,
     body_master_star: mappedBoard.body_master_star,
     five_element_class: mappedBoard.five_element_class,
-    snapshot_json: toPlainJson(mappedBoard.snapshot),
+    snapshot_json: mappedBoard.snapshot as unknown as Record<string, unknown>,
     raw_input_json: toPlainJson(input),
     remarks: input.remarks,
     created_at: now,

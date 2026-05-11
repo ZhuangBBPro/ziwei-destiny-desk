@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { CardSection } from "@/components/ui/CardSection";
 import { FieldError } from "@/components/ui/FieldError";
 import { LocationPicker } from "@/features/charts/components/LocationPicker";
+import { preloadZiweiEngine } from "@/features/charts/lib/ziweiEngine";
 import { chartFormSchema, type ChartFormValues } from "@/features/charts/schemas/chartFormSchema";
 import { chartService } from "@/features/charts/services/chartService";
 import { caseService } from "@/features/cases/services/caseService";
@@ -62,6 +63,12 @@ export function NewChartPage() {
 
   const birthCalendarType = watch("birth_calendar_type");
   const birthLocation = watch("birth_location");
+
+  useEffect(() => {
+    preloadZiweiEngine().catch((error) => {
+      console.debug("Ziwei engine preload skipped", error);
+    });
+  }, []);
 
   useEffect(() => {
     setBirthDateParts((currentParts) => clampBirthDateParts(currentParts, birthCalendarType));
