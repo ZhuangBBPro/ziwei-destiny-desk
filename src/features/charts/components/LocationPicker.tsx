@@ -122,8 +122,8 @@ function LocationPickerDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-[#2b1b11]/45 px-3 py-4 backdrop-blur-[2px] sm:items-center">
-      <div className="w-full max-w-2xl overflow-hidden rounded-[1.9rem] border border-[#d2b994] bg-[#f7eddc] shadow-[0_28px_90px_rgba(47,27,13,0.32)]">
+    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-[#5a432f]/24 px-3 py-4 backdrop-blur-[2px] sm:items-center">
+      <div className="w-full max-w-2xl overflow-hidden rounded-[1.9rem] border border-[#dfc9a7] bg-[#fff7eb] shadow-[0_24px_70px_rgba(80,54,28,0.22)]">
         <div className="border-b border-[#dfc9a7] bg-[linear-gradient(135deg,#fffaf2_0%,#f1dfc2_100%)] p-4">
           <p className="mb-3 text-xs uppercase tracking-[0.28em] text-[#9b7f52]">Birth Place</p>
           <div className="flex gap-2">
@@ -178,8 +178,8 @@ function LocationPickerDialog({
             </label>
           </div>
         ) : (
-          <div className="relative grid h-72 grid-cols-3 overflow-hidden bg-[radial-gradient(circle_at_50%_0%,#fff9ef_0%,#ead7ba_55%,#d9bd96_100%)] px-3 py-4">
-            <div className="pointer-events-none absolute left-4 right-4 top-1/2 z-10 h-12 -translate-y-1/2 rounded-2xl border-y border-[#9e6a3e] bg-[#fff1d6]/70 shadow-[0_8px_22px_rgba(85,53,25,0.18)]" />
+          <div className="relative grid h-72 grid-cols-3 overflow-hidden bg-[radial-gradient(circle_at_50%_0%,#fffdf8_0%,#f6ead7_58%,#ead6ba_100%)] px-3 py-4">
+            <div className="pointer-events-none absolute left-4 right-4 top-1/2 z-10 h-12 -translate-y-1/2 rounded-2xl border-y border-[#c9a77d] bg-[#fff7e8]/78 shadow-[0_6px_16px_rgba(85,53,25,0.1)]" />
             <PickerColumn
               items={CHINA_LOCATIONS.map((item) => item.name)}
               activeIndex={selection.provinceIndex}
@@ -195,8 +195,8 @@ function LocationPickerDialog({
               activeIndex={selection.districtIndex}
               onSelect={updateDistrict}
             />
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#6b4425]/20 to-transparent" />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#6b4425]/20 to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#c9a77d]/18 to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#c9a77d]/18 to-transparent" />
           </div>
         )}
 
