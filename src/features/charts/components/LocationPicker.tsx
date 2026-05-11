@@ -187,11 +187,13 @@ function LocationPickerDialog({
               onSelect={updateProvince}
             />
             <PickerColumn
+              key={`city-${province.name}`}
               items={province.cities.map((item) => item.name)}
               activeIndex={selection.cityIndex}
               onSelect={updateCity}
             />
             <PickerColumn
+              key={`district-${province.name}-${city.name}`}
               items={city.districts.map((item) => item.name)}
               activeIndex={selection.districtIndex}
               onSelect={updateDistrict}
@@ -238,11 +240,60 @@ function PickerColumn({
   onSelect: (index: number) => void;
 }) {
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const scrollSelectionTimerRef = useRef<number | undefined>(undefined);
   const { containerRef, isDragging, dragScrollHandlers } = useDragScroll();
 
   useEffect(() => {
-    itemRefs.current[activeIndex]?.scrollIntoView({ block: "center" });
-  }, [activeIndex, items]);
+    itemRefs.current.length = items.length;
+    if (!isDragging) {
+      itemRefs.current[activeIndex]?.scrollIntoView({ block: "center" });
+    }
+  }, [activeIndex, isDragging, items]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollSelectionTimerRef.current !== undefined) {
+        window.clearTimeout(scrollSelectionTimerRef.current);
+      }
+    };
+  }, []);
+
+  function selectCenteredItem() {
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    const centerY = containerRect.top + containerRect.height / 2;
+    let nearestIndex = activeIndex;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    itemRefs.current.forEach((element, index) => {
+      if (!element) {
+        return;
+      }
+
+      const rect = element.getBoundingClientRect();
+      const distance = Math.abs(rect.top + rect.height / 2 - centerY);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = index;
+      }
+    });
+
+    if (nearestIndex !== activeIndex && nearestIndex >= 0 && nearestIndex < items.length) {
+      onSelect(nearestIndex);
+    }
+  }
+
+  function handleScroll() {
+    if (scrollSelectionTimerRef.current !== undefined) {
+      window.clearTimeout(scrollSelectionTimerRef.current);
+    }
+
+    scrollSelectionTimerRef.current = window.setTimeout(selectCenteredItem, 80);
+  }
 
   return (
     <div
@@ -250,6 +301,7 @@ function PickerColumn({
       className={`relative z-20 overflow-y-auto overscroll-contain px-1 py-[5.9rem] [scrollbar-width:none] ${
         isDragging ? "cursor-grabbing select-none" : "cursor-grab"
       }`}
+      onScroll={handleScroll}
       {...dragScrollHandlers}
     >
       <div className="grid gap-1">
