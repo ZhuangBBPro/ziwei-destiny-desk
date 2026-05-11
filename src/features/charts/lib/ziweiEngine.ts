@@ -119,8 +119,8 @@ function resolveSolarBirthDate(
     return date;
   }
 
-  const lunar2solar = bridge.defaultCalendar?.lunar2solar;
-  if (!lunar2solar) {
+  const calendar = bridge.defaultCalendar;
+  if (!calendar?.lunar2solar) {
     throw new AppError(
       "农历转阳历失败：排盘库未提供农历转换能力。",
       "LUNAR_CONVERTER_NOT_AVAILABLE",
@@ -129,7 +129,7 @@ function resolveSolarBirthDate(
   }
 
   try {
-    const convertedDate = lunar2solar(year, month, day, input.leap_month_flag);
+    const convertedDate = calendar.lunar2solar(year, month, day, input.leap_month_flag);
     const solarDate = {
       year: convertedDate.solarYear,
       month: convertedDate.solarMonth,
