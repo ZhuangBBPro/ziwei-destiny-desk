@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useDragScroll } from "@/features/charts/hooks/useDragScroll";
 
 interface TimePickerProps {
   value: string;
@@ -106,13 +107,20 @@ function PickerColumn({
   onSelect: (value: string) => void;
 }) {
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const { containerRef, isDragging, dragScrollHandlers } = useDragScroll();
 
   useEffect(() => {
     itemRefs.current[activeIndex]?.scrollIntoView({ block: "center" });
   }, [activeIndex, items]);
 
   return (
-    <div className="relative z-20 overflow-y-auto overscroll-contain px-2 py-[5.9rem] [scrollbar-width:none]">
+    <div
+      ref={containerRef}
+      className={`relative z-20 overflow-y-auto overscroll-contain px-2 py-[5.9rem] [scrollbar-width:none] ${
+        isDragging ? "cursor-grabbing select-none" : "cursor-grab"
+      }`}
+      {...dragScrollHandlers}
+    >
       <div className="grid gap-1">
         {items.map((item, index) => (
           <button
@@ -121,7 +129,11 @@ function PickerColumn({
               itemRefs.current[index] = element;
             }}
             type="button"
-            onClick={() => onSelect(item)}
+            onClick={() => {
+              if (!isDragging) {
+                onSelect(item);
+              }
+            }}
             className={`h-12 rounded-xl px-2 text-center text-lg transition ${
               index === activeIndex ? "font-semibold text-[#2f1b0d]" : "text-[#8b6b3c]"
             }`}

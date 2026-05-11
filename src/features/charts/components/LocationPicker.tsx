@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CHINA_LOCATIONS, type ChinaCity, type ChinaProvince } from "@/features/charts/lib/chinaLocations";
+import { useDragScroll } from "@/features/charts/hooks/useDragScroll";
 
 interface LocationPickerProps {
   value: string;
@@ -237,13 +238,20 @@ function PickerColumn({
   onSelect: (index: number) => void;
 }) {
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const { containerRef, isDragging, dragScrollHandlers } = useDragScroll();
 
   useEffect(() => {
     itemRefs.current[activeIndex]?.scrollIntoView({ block: "center" });
   }, [activeIndex, items]);
 
   return (
-    <div className="relative z-20 overflow-y-auto overscroll-contain px-1 py-[5.9rem] [scrollbar-width:none]">
+    <div
+      ref={containerRef}
+      className={`relative z-20 overflow-y-auto overscroll-contain px-1 py-[5.9rem] [scrollbar-width:none] ${
+        isDragging ? "cursor-grabbing select-none" : "cursor-grab"
+      }`}
+      {...dragScrollHandlers}
+    >
       <div className="grid gap-1">
         {items.map((item, index) => (
           <button
@@ -252,7 +260,11 @@ function PickerColumn({
               itemRefs.current[index] = element;
             }}
             type="button"
-            onClick={() => onSelect(index)}
+            onClick={() => {
+              if (!isDragging) {
+                onSelect(index);
+              }
+            }}
             className={`h-12 rounded-xl px-2 text-center text-base transition ${
               index === activeIndex ? "font-semibold text-[#2f1b0d]" : "text-[#8b6b3c]"
             }`}
