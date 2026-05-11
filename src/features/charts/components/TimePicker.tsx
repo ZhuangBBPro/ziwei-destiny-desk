@@ -13,9 +13,9 @@ interface TimeParts {
 
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0"));
 const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, "0"));
-const EMPTY_TIME_PARTS: TimeParts = {
-  hour: "",
-  minute: "",
+const DEFAULT_TIME_PARTS: TimeParts = {
+  hour: "00",
+  minute: "00",
 };
 
 export function TimePicker({ value, onChange }: TimePickerProps) {
@@ -29,10 +29,9 @@ export function TimePicker({ value, onChange }: TimePickerProps) {
   }, [isOpen, value]);
 
   function handleConfirm() {
-    if (!parts.hour || !parts.minute) {
-      return;
-    }
-    onChange(`${parts.hour}:${parts.minute}`);
+    const hour = parts.hour || DEFAULT_TIME_PARTS.hour;
+    const minute = parts.minute || DEFAULT_TIME_PARTS.minute;
+    onChange(`${hour}:${minute}`);
     setIsOpen(false);
   }
 
@@ -62,13 +61,13 @@ export function TimePicker({ value, onChange }: TimePickerProps) {
               <PickerColumn
                 label="时"
                 items={HOUR_OPTIONS}
-                activeIndex={Math.max(HOUR_OPTIONS.indexOf(parts.hour), 0)}
+                activeIndex={Math.max(HOUR_OPTIONS.indexOf(parts.hour || DEFAULT_TIME_PARTS.hour), 0)}
                 onSelect={(hour) => setParts((current) => ({ ...current, hour }))}
               />
               <PickerColumn
                 label="分"
                 items={MINUTE_OPTIONS}
-                activeIndex={Math.max(MINUTE_OPTIONS.indexOf(parts.minute), 0)}
+                activeIndex={Math.max(MINUTE_OPTIONS.indexOf(parts.minute || DEFAULT_TIME_PARTS.minute), 0)}
                 onSelect={(minute) => setParts((current) => ({ ...current, minute }))}
               />
               <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white/70 to-transparent" />
@@ -82,8 +81,7 @@ export function TimePicker({ value, onChange }: TimePickerProps) {
               <button
                 type="button"
                 onClick={handleConfirm}
-                disabled={!parts.hour || !parts.minute}
-                className="rounded-2xl bg-[#3a2413] py-3 font-medium text-white shadow-[0_10px_24px_rgba(58,36,19,0.22)] transition hover:bg-[#5a3419] disabled:opacity-50"
+                className="rounded-2xl bg-[#3a2413] py-3 font-medium text-white shadow-[0_10px_24px_rgba(58,36,19,0.22)] transition hover:bg-[#5a3419]"
               >
                 确定
               </button>
@@ -110,8 +108,38 @@ function PickerColumn({
   const { containerRef, isDragging, dragScrollHandlers } = useDragScroll();
 
   useEffect(() => {
-    itemRefs.current[activeIndex]?.scrollIntoView({ block: "center" });
-  }, [activeIndex, items]);
+    if (!isDragging) {
+      itemRefs.current[activeIndex]?.scrollIntoView({ block: "center" });
+    }
+  }, [activeIndex, isDragging, items]);
+
+  function selectCenteredItem() {
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    const centerY = containerRect.top + containerRect.height / 2;
+    let nearestIndex = activeIndex;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    itemRefs.current.forEach((element, index) => {
+      if (!element) {
+        return;
+      }
+      const rect = element.getBoundingClientRect();
+      const distance = Math.abs(rect.top + rect.height / 2 - centerY);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = index;
+      }
+    });
+
+    if (nearestIndex !== activeIndex) {
+      onSelect(items[nearestIndex]);
+    }
+  }
 
   return (
     <div
@@ -119,6 +147,7 @@ function PickerColumn({
       className={`relative z-20 overflow-y-auto overscroll-contain px-2 py-[5.9rem] [scrollbar-width:none] ${
         isDragging ? "cursor-grabbing select-none" : "cursor-grab"
       }`}
+      onScroll={selectCenteredItem}
       {...dragScrollHandlers}
     >
       <div className="grid gap-1">
@@ -150,7 +179,7 @@ function PickerColumn({
 function parseTimeValue(value: string): TimeParts {
   const match = value.match(/^(\d{2}):(\d{2})$/);
   if (!match) {
-    return EMPTY_TIME_PARTS;
+    return DEFAULT_TIME_PARTS;
   }
 
   return {
