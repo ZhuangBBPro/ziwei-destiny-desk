@@ -31,16 +31,36 @@ export class CaseRepository {
   }
 
   async deleteCase(caseId: string) {
-    const [notes, events, tags, ruleHits] = await Promise.all([
+    await this.deleteCaseRecord(caseId, false);
+  }
+
+  async deleteCaseWithChart(caseId: string) {
+    await this.deleteCaseRecord(caseId, true);
+  }
+
+  private async deleteCaseRecord(caseId: string, includeChart: boolean) {
+    const caseRecord = await appDb.case_records.get(caseId);
+    if (!caseRecord) {
+      return;
+    }
+
+    const [notes, events, tags, ruleHits, palaces, stars, transforms] = await Promise.all([
       appDb.case_notes.where("case_id").equals(caseId).toArray(),
       appDb.case_events.where("case_id").equals(caseId).toArray(),
       appDb.case_tags.where("case_id").equals(caseId).toArray(),
       appDb.case_rule_hint_hits.where("case_id").equals(caseId).toArray(),
+      includeChart ? appDb.chart_palaces.where("chart_id").equals(caseRecord.chart_id).toArray() : [],
+      includeChart ? appDb.chart_stars.where("chart_id").equals(caseRecord.chart_id).toArray() : [],
+      includeChart ? appDb.chart_transforms.where("chart_id").equals(caseRecord.chart_id).toArray() : [],
     ]);
 
     await appDb.transaction(
       "rw",
       [
+        appDb.charts,
+        appDb.chart_palaces,
+        appDb.chart_stars,
+        appDb.chart_transforms,
         appDb.case_records,
         appDb.case_notes,
         appDb.case_events,
@@ -53,6 +73,12 @@ export class CaseRepository {
         await appDb.case_events.bulkDelete(events.map((item) => item.id));
         await appDb.case_tags.bulkDelete(tags.map((item) => item.id));
         await appDb.case_rule_hint_hits.bulkDelete(ruleHits.map((item) => item.id));
+        if (includeChart) {
+          await appDb.charts.delete(caseRecord.chart_id);
+          await appDb.chart_palaces.bulkDelete(palaces.map((item) => item.id));
+          await appDb.chart_stars.bulkDelete(stars.map((item) => item.id));
+          await appDb.chart_transforms.bulkDelete(transforms.map((item) => item.id));
+        }
       },
     );
   }

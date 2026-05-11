@@ -64,7 +64,7 @@ export class CaseService {
   }
 
   async deleteCase(caseId: string) {
-    await caseRepository.deleteCase(caseId);
+    await caseRepository.deleteCaseWithChart(caseId);
   }
 
   async listCasesByChart(chartId: string) {

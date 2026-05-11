@@ -64,7 +64,7 @@ export function CaseLibraryPage() {
 
   async function handleDeleteCase(item: CaseLibraryItem) {
     setOpenMenuCaseId(null);
-    if (!window.confirm(`确定删除案例「${item.chart_subject_name || item.case_code}」吗？相关批注、时间线、标签和规则命中也会一起删除，但不会删除命盘。`)) {
+    if (!window.confirm(`确定删除「${item.chart_subject_name || item.case_code}」吗？这会删除完整资料，包括命盘、宫位、星曜、四化、案例、批注、时间线、标签关系和规则命中。`)) {
       return;
     }
 
