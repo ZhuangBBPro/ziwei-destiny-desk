@@ -179,7 +179,7 @@ function LocationPickerDialog({
             </label>
           </div>
         ) : (
-          <div className="relative grid h-72 grid-cols-3 overflow-hidden bg-[linear-gradient(180deg,#fffdf8_0%,#fbf3e8_52%,#fffaf2_100%)] px-3 py-4">
+          <div className="relative grid h-72 grid-cols-3 overflow-hidden bg-white px-3 py-4">
             <div className="pointer-events-none absolute left-4 right-4 top-1/2 z-10 h-12 -translate-y-1/2 rounded-2xl border-y border-[#dfc9a7] bg-white/72 shadow-[0_4px_12px_rgba(85,53,25,0.06)]" />
             <PickerColumn
               items={CHINA_LOCATIONS.map((item) => item.name)}

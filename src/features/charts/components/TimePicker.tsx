@@ -57,7 +57,7 @@ export function TimePicker({ value, onChange }: TimePickerProps) {
               <p className="mt-1 text-sm text-[#7b5d3b]">统一输出为 24 小时制 HH:mm。</p>
             </div>
 
-            <div className="relative grid h-72 grid-cols-2 overflow-hidden bg-[linear-gradient(180deg,#fffdf8_0%,#fbf3e8_52%,#fffaf2_100%)] px-8 py-4">
+            <div className="relative grid h-72 grid-cols-2 overflow-hidden bg-white px-8 py-4">
               <div className="pointer-events-none absolute left-6 right-6 top-1/2 z-10 h-12 -translate-y-1/2 rounded-2xl border-y border-[#dfc9a7] bg-white/72 shadow-[0_4px_12px_rgba(85,53,25,0.06)]" />
               <PickerColumn
                 label="时"
