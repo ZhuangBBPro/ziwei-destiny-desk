@@ -431,7 +431,7 @@ export function ChartDetailPage() {
         </div>
       </section>
 
-      <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.95fr)_320px] xl:grid-cols-[minmax(0,1.8fr)_300px]">
+      <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.95fr)_320px]">
         <div className="space-y-5">
           <ProfessionalPalaceBoard
             chart={aggregate.chart}
@@ -440,7 +440,7 @@ export function ChartDetailPage() {
             onSelectPalace={setSelectedPalaceCode}
           />
 
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
+          <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
             <CardSection
               title={`焦点宫位 · ${selectedPalaceLabel}`}
               description="当前宫位摘要会跟着盘面选中状态实时联动。"
