@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { CardSection } from "@/components/ui/CardSection";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { StatusPill } from "@/components/ui/StatusPill";
 import { caseService } from "@/features/cases/services/caseService";
 import type { TagRecord } from "@/types";
 
@@ -189,12 +188,9 @@ export function CaseLibraryPage() {
                       </div>
                     </div>
                   </Link>
-                  <div className="space-y-2 text-right">
-                    <StatusPill label={item.status} />
-                    <p className="text-xs text-slate-500">
-                      更新于 {new Date(item.updated_at).toLocaleString()}
-                    </p>
-                  </div>
+                  <p className="pr-12 text-xs text-slate-500 md:text-right">
+                    更新于 {new Date(item.updated_at).toLocaleString()}
+                  </p>
                 </div>
                 <div className="absolute right-3 top-3">
                   <button
