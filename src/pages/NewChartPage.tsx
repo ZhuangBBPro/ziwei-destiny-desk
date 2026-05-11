@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { CardSection } from "@/components/ui/CardSection";
 import { FieldError } from "@/components/ui/FieldError";
 import { LocationPicker } from "@/features/charts/components/LocationPicker";
+import { TimePicker } from "@/features/charts/components/TimePicker";
 import { preloadZiweiEngine } from "@/features/charts/lib/ziweiEngine";
 import { chartFormSchema, type ChartFormValues } from "@/features/charts/schemas/chartFormSchema";
 import { chartService } from "@/features/charts/services/chartService";
@@ -63,6 +64,7 @@ export function NewChartPage() {
 
   const birthCalendarType = watch("birth_calendar_type");
   const birthLocation = watch("birth_location");
+  const birthTime = watch("birth_time");
 
   useEffect(() => {
     preloadZiweiEngine().catch((error) => {
@@ -178,15 +180,21 @@ export function NewChartPage() {
             <FieldError message={errors.birth_date?.message} />
           </label>
 
-          <label className="block">
+          <div className="block">
             <span className="text-sm font-medium text-slate-700">出生时辰 / 时间</span>
-            <input
-              {...register("birth_time")}
-              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3"
-              placeholder="例如：午时 / 11:30 / 中午11点半"
+            <TimePicker
+              value={birthTime}
+              onChange={(time) =>
+                setValue("birth_time", time, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
+              }
             />
+            <input type="hidden" {...register("birth_time")} />
+            <p className="mt-1 text-xs text-slate-500">按 24 小时制选择，统一保存为 HH:mm。</p>
             <FieldError message={errors.birth_time?.message} />
-          </label>
+          </div>
 
           <div className="block md:col-span-2">
             <span className="text-sm font-medium text-slate-700">出生地点</span>
@@ -241,9 +249,7 @@ export function NewChartPage() {
           >
             {isSubmitting ? "排盘中..." : "真实排盘并保存"}
           </button>
-          <p className="self-center text-sm text-slate-500">
-            时辰支持 `午时`、`11:30`、`中午11点半` 这类输入
-          </p>
+          <p className="self-center text-sm text-slate-500">出生时间会自动映射到十二时辰。</p>
         </div>
       </form>
     </CardSection>

@@ -16,7 +16,8 @@ export const chartFormSchema = z.object({
     .string()
     .trim()
     .min(1, "请输入出生时辰")
-    .refine((value) => normalizeTimeGroundInput(value) !== null, "请输入十二时辰、HH:mm 或 11点半"),
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "请选择出生时间")
+    .refine((value) => normalizeTimeGroundInput(value) !== null, "出生时间无法映射到十二时辰"),
   birth_location: z.string().trim(),
   leap_month_flag: z.boolean(),
   true_solar_time_enabled: z.boolean(),
