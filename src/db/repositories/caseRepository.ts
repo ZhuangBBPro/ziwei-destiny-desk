@@ -30,6 +30,33 @@ export class CaseRepository {
     return appDb.case_records.get(caseId);
   }
 
+  async deleteCase(caseId: string) {
+    const [notes, events, tags, ruleHits] = await Promise.all([
+      appDb.case_notes.where("case_id").equals(caseId).toArray(),
+      appDb.case_events.where("case_id").equals(caseId).toArray(),
+      appDb.case_tags.where("case_id").equals(caseId).toArray(),
+      appDb.case_rule_hint_hits.where("case_id").equals(caseId).toArray(),
+    ]);
+
+    await appDb.transaction(
+      "rw",
+      [
+        appDb.case_records,
+        appDb.case_notes,
+        appDb.case_events,
+        appDb.case_tags,
+        appDb.case_rule_hint_hits,
+      ],
+      async () => {
+        await appDb.case_records.delete(caseId);
+        await appDb.case_notes.bulkDelete(notes.map((item) => item.id));
+        await appDb.case_events.bulkDelete(events.map((item) => item.id));
+        await appDb.case_tags.bulkDelete(tags.map((item) => item.id));
+        await appDb.case_rule_hint_hits.bulkDelete(ruleHits.map((item) => item.id));
+      },
+    );
+  }
+
   async listCasesByChart(chartId: string) {
     const items = await appDb.case_records.where("chart_id").equals(chartId).toArray();
     return items.sort((a, b) => b.updated_at.localeCompare(a.updated_at));

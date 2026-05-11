@@ -7,8 +7,10 @@ import { FieldError } from "@/components/ui/FieldError";
 import { LocationPicker } from "@/features/charts/components/LocationPicker";
 import { chartFormSchema, type ChartFormValues } from "@/features/charts/schemas/chartFormSchema";
 import { chartService } from "@/features/charts/services/chartService";
+import { caseService } from "@/features/cases/services/caseService";
 import { AppError } from "@/lib/errors";
 import { DEFAULT_BIRTH_TIMEZONE } from "@/lib/constants";
+import { dayjs } from "@/lib/dayjs";
 import type { BirthCalendarType } from "@/types";
 
 const defaultValues: ChartFormValues = {
@@ -92,7 +94,16 @@ export function NewChartPage() {
         ...values,
         birth_timezone: DEFAULT_BIRTH_TIMEZONE,
       });
-      navigate(`/charts/${aggregate.chart.id}`);
+      const mainCase = await caseService.createMainCase({
+        chart_id: aggregate.chart.id,
+        consultation_topic: "初始命盘记录",
+        consultation_date: dayjs().format("YYYY-MM-DD"),
+        status: "active",
+        priority_level: 2,
+        source_channel: "新建命盘",
+        initial_summary: values.remarks || "创建命盘时自动生成的主案例。",
+      });
+      navigate(`/charts/${aggregate.chart.id}/cases/${mainCase.id}`);
     } catch (error) {
       console.error("Failed to create chart", error);
       setSubmitError(

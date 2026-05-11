@@ -35,6 +35,8 @@ export function CaseLibraryPage() {
   const [status, setStatus] = useState("");
   const [sortBy, setSortBy] = useState<"created_at" | "last_activity_at">("last_activity_at");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [openMenuCaseId, setOpenMenuCaseId] = useState<string | null>(null);
+  const [deletingCaseId, setDeletingCaseId] = useState<string | null>(null);
 
   async function load() {
     const result = await caseService.queryCaseLibrary({
@@ -58,6 +60,24 @@ export function CaseLibraryPage() {
     setSelectedTagIds((current) =>
       current.includes(tagId) ? current.filter((item) => item !== tagId) : [...current, tagId],
     );
+  }
+
+  async function handleDeleteCase(item: CaseLibraryItem) {
+    setOpenMenuCaseId(null);
+    if (!window.confirm(`确定删除案例「${item.chart_subject_name || item.case_code}」吗？相关批注、时间线、标签和规则命中也会一起删除，但不会删除命盘。`)) {
+      return;
+    }
+
+    setDeletingCaseId(item.id);
+    try {
+      await caseService.deleteCase(item.id);
+      await load();
+    } catch (error) {
+      console.error("Failed to delete case", error);
+      window.alert("删除案例失败，请查看控制台日志。");
+    } finally {
+      setDeletingCaseId(null);
+    }
   }
 
   return (
@@ -138,36 +158,37 @@ export function CaseLibraryPage() {
             <EmptyState title="暂无匹配案例" description="尝试调整筛选条件，或先在命盘详情页创建案例。" />
           ) : (
             items.map((item) => (
-              <Link
+              <article
                 key={item.id}
-                to={`/charts/${item.chart_id}/cases/${item.id}`}
-                className="block rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                className="relative rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-300 hover:bg-white"
               >
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <p className="font-medium text-slate-900">
-                      {item.chart_subject_name || item.case_code}
-                    </p>
-                    <p className="mt-1 text-sm text-slate-600">
-                      {item.consultation_topic || "未填写咨询主题"}
-                    </p>
-                    {item.initial_summary ? (
-                      <p className="mt-2 text-sm leading-6 text-slate-500 line-clamp-2">
-                        {item.initial_summary}
+                  <Link to={`/charts/${item.chart_id}/cases/${item.id}`} className="min-w-0 flex-1 pr-12">
+                    <div>
+                      <p className="font-medium text-slate-900">
+                        {item.chart_subject_name || item.case_code}
                       </p>
-                    ) : null}
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {item.tags.map((tag) => (
-                        <span
-                          key={tag.id}
-                          className="rounded-full px-2 py-1 text-xs text-white"
-                          style={{ backgroundColor: tag.color }}
-                        >
-                          {tag.tag_name}
-                        </span>
-                      ))}
+                      <p className="mt-1 text-sm text-slate-600">
+                        {item.consultation_topic || "未填写咨询主题"}
+                      </p>
+                      {item.initial_summary ? (
+                        <p className="mt-2 text-sm leading-6 text-slate-500 line-clamp-2">
+                          {item.initial_summary}
+                        </p>
+                      ) : null}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {item.tags.map((tag) => (
+                          <span
+                            key={tag.id}
+                            className="rounded-full px-2 py-1 text-xs text-white"
+                            style={{ backgroundColor: tag.color }}
+                          >
+                            {tag.tag_name}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  </Link>
                   <div className="space-y-2 text-right">
                     <StatusPill label={item.status} />
                     <p className="text-xs text-slate-500">
@@ -175,7 +196,29 @@ export function CaseLibraryPage() {
                     </p>
                   </div>
                 </div>
-              </Link>
+                <div className="absolute right-3 top-3">
+                  <button
+                    type="button"
+                    onClick={() => setOpenMenuCaseId((current) => (current === item.id ? null : item.id))}
+                    className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-sm text-slate-500 shadow-sm transition hover:border-slate-300 hover:text-slate-800"
+                    aria-label={`打开${item.chart_subject_name || item.case_code}操作菜单`}
+                  >
+                    ...
+                  </button>
+                  {openMenuCaseId === item.id ? (
+                    <div className="absolute right-0 z-20 mt-2 w-32 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-[0_14px_34px_rgba(15,23,42,0.14)]">
+                      <button
+                        type="button"
+                        disabled={deletingCaseId === item.id}
+                        onClick={() => handleDeleteCase(item)}
+                        className="block w-full px-3 py-2 text-left text-sm text-rose-600 transition hover:bg-rose-50 disabled:opacity-50"
+                      >
+                        {deletingCaseId === item.id ? "删除中..." : "删除案例"}
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              </article>
             ))
           )}
         </div>

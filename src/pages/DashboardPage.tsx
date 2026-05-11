@@ -4,7 +4,6 @@ import { CardSection } from "@/components/ui/CardSection";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { chartService } from "@/features/charts/services/chartService";
-import { formatChartBirthInfo } from "@/features/charts/lib/birthDisplay";
 import { caseService } from "@/features/cases/services/caseService";
 import { getRecentChartViews } from "@/lib/recentViews";
 import type { ChartRecord } from "@/types";
@@ -19,27 +18,20 @@ interface DashboardCaseItem {
 }
 
 export function DashboardPage() {
-  const [recentCharts, setRecentCharts] = useState<ChartRecord[]>([]);
   const [recentViewedCharts, setRecentViewedCharts] = useState<ChartRecord[]>([]);
   const [recentCases, setRecentCases] = useState<DashboardCaseItem[]>([]);
-  const [pendingCases, setPendingCases] = useState<DashboardCaseItem[]>([]);
 
   useEffect(() => {
     async function load() {
       const recentViewedIds = getRecentChartViews();
-      const [charts, viewedCharts, caseLibrary] = await Promise.all([
-        chartService.listRecentCharts(6),
+      const [viewedCharts, caseLibrary] = await Promise.all([
         chartService.listChartsByIds(recentViewedIds),
         caseService.queryCaseLibrary({ sortBy: "last_activity_at" }),
       ]);
 
       const cases = caseLibrary.cases as DashboardCaseItem[];
-      setRecentCharts(charts);
       setRecentViewedCharts(viewedCharts);
       setRecentCases(cases.slice(0, 5));
-      setPendingCases(
-        cases.filter((item) => item.status === "active" || item.status === "follow_up").slice(0, 5),
-      );
     }
 
     load().catch((error) => {
@@ -71,31 +63,7 @@ export function DashboardPage() {
         </div>
       </CardSection>
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <CardSection title="最近新增案例">
-          <div className="space-y-3">
-            {recentCases.length === 0 ? (
-              <EmptyState title="还没有案例" description="先创建命盘，再从详情页建立主案例。" />
-            ) : (
-              recentCases.map((item) => (
-                <Link
-                  key={item.id}
-                  to={`/charts/${item.chart_id}/cases/${item.id}`}
-                  className="block rounded-2xl border border-slate-200 bg-slate-50 p-4"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-medium text-slate-900">{item.chart_subject_name || item.case_code}</p>
-                      <p className="mt-1 text-sm text-slate-600">{item.consultation_topic || "未填写主题"}</p>
-                    </div>
-                    <StatusPill label={item.status} />
-                  </div>
-                </Link>
-              ))
-            )}
-          </div>
-        </CardSection>
-
+      <div className="grid gap-4 xl:grid-cols-2">
         <CardSection title="最近查看命盘">
           <div className="space-y-3">
             {recentViewedCharts.length === 0 ? (
@@ -117,46 +85,30 @@ export function DashboardPage() {
           </div>
         </CardSection>
 
-        <CardSection title="待复盘案例">
+        <CardSection title="最近新增案例">
           <div className="space-y-3">
-            {pendingCases.length === 0 ? (
-              <EmptyState title="暂无待复盘案例" description="active 与 follow_up 状态案例会聚合在这里。" />
+            {recentCases.length === 0 ? (
+              <EmptyState title="还没有案例" description="创建命盘后会自动生成主案例并进入案例库。" />
             ) : (
-              pendingCases.map((item) => (
+              recentCases.map((item) => (
                 <Link
                   key={item.id}
                   to={`/charts/${item.chart_id}/cases/${item.id}`}
                   className="block rounded-2xl border border-slate-200 bg-slate-50 p-4"
                 >
-                  <p className="font-medium text-slate-900">{item.chart_subject_name}</p>
-                  <p className="mt-1 text-sm text-slate-600">{item.consultation_topic}</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-slate-900">{item.chart_subject_name || item.case_code}</p>
+                      <p className="mt-1 text-sm text-slate-600">{item.consultation_topic || "未填写主题"}</p>
+                    </div>
+                    <StatusPill label={item.status} />
+                  </div>
                 </Link>
               ))
             )}
           </div>
         </CardSection>
       </div>
-
-      <CardSection title="最近创建命盘">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {recentCharts.length === 0 ? (
-            <EmptyState title="还没有命盘" description="从新建命盘页录入出生资料后，这里会出现最近创建记录。" />
-          ) : (
-            recentCharts.map((chart) => (
-              <Link
-                key={chart.id}
-                to={`/charts/${chart.id}`}
-                className="block rounded-2xl border border-slate-200 bg-slate-50 p-4"
-              >
-                <p className="font-medium text-slate-900">{chart.subject_name}</p>
-                <p className="mt-1 text-sm text-slate-600">
-                  {formatChartBirthInfo(chart)}
-                </p>
-              </Link>
-            ))
-          )}
-        </div>
-      </CardSection>
     </div>
   );
 }
