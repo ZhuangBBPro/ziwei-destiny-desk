@@ -48,16 +48,16 @@ export function TimePicker({ value, onChange }: TimePickerProps) {
       </button>
 
       {isOpen ? (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-[#5a432f]/24 px-3 py-4 backdrop-blur-[2px] sm:items-center">
-          <div className="w-full max-w-md overflow-hidden rounded-[1.9rem] border border-[#dfc9a7] bg-[#fff7eb] shadow-[0_24px_70px_rgba(80,54,28,0.22)]">
-            <div className="border-b border-[#dfc9a7] bg-[linear-gradient(135deg,#fffaf2_0%,#f1dfc2_100%)] p-4">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-[#7b684f]/14 px-3 py-4 backdrop-blur-[1px] sm:items-center">
+          <div className="w-full max-w-md overflow-hidden rounded-[1.9rem] border border-[#eadcc7] bg-[#fffdf8] shadow-[0_22px_60px_rgba(80,54,28,0.16)]">
+            <div className="border-b border-[#eadcc7] bg-[linear-gradient(135deg,#fffdf8_0%,#fbf1e1_100%)] p-4">
               <p className="text-xs uppercase tracking-[0.28em] text-[#9b7f52]">Birth Time</p>
               <h3 className="mt-2 font-serif text-2xl text-[#2f1b0d]">选择出生时间</h3>
               <p className="mt-1 text-sm text-[#7b5d3b]">统一输出为 24 小时制 HH:mm。</p>
             </div>
 
-            <div className="relative grid h-72 grid-cols-2 overflow-hidden bg-[radial-gradient(circle_at_50%_0%,#fffdf8_0%,#f6ead7_58%,#ead6ba_100%)] px-8 py-4">
-              <div className="pointer-events-none absolute left-6 right-6 top-1/2 z-10 h-12 -translate-y-1/2 rounded-2xl border-y border-[#c9a77d] bg-[#fff7e8]/78 shadow-[0_6px_16px_rgba(85,53,25,0.1)]" />
+            <div className="relative grid h-72 grid-cols-2 overflow-hidden bg-[linear-gradient(180deg,#fffdf8_0%,#fbf3e8_52%,#fffaf2_100%)] px-8 py-4">
+              <div className="pointer-events-none absolute left-6 right-6 top-1/2 z-10 h-12 -translate-y-1/2 rounded-2xl border-y border-[#dfc9a7] bg-white/72 shadow-[0_4px_12px_rgba(85,53,25,0.06)]" />
               <PickerColumn
                 label="时"
                 items={HOUR_OPTIONS}
@@ -70,11 +70,11 @@ export function TimePicker({ value, onChange }: TimePickerProps) {
                 activeIndex={Math.max(MINUTE_OPTIONS.indexOf(parts.minute), 0)}
                 onSelect={(minute) => setParts((current) => ({ ...current, minute }))}
               />
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#c9a77d]/18 to-transparent" />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#c9a77d]/18 to-transparent" />
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white/70 to-transparent" />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white/70 to-transparent" />
             </div>
 
-            <div className="grid grid-cols-2 gap-2 border-t border-[#dfc9a7] bg-[#fffaf2]/95 p-3">
+            <div className="grid grid-cols-2 gap-2 border-t border-[#eadcc7] bg-white/95 p-3">
               <button type="button" onClick={() => setIsOpen(false)} className="rounded-2xl border border-[#d9c7a9] bg-white py-3 text-[#7b5d3b] transition hover:border-[#b9854c]">
                 取消
               </button>
