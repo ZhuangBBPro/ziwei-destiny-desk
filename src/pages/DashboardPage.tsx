@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { CardSection } from "@/components/ui/CardSection";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { StatusPill } from "@/components/ui/StatusPill";
 import { chartService } from "@/features/charts/services/chartService";
 import { caseService } from "@/features/cases/services/caseService";
 import { getRecentChartViews } from "@/lib/recentViews";
@@ -20,24 +19,44 @@ interface DashboardCaseItem {
 export function DashboardPage() {
   const [recentViewedCharts, setRecentViewedCharts] = useState<ChartRecord[]>([]);
   const [recentCases, setRecentCases] = useState<DashboardCaseItem[]>([]);
+  const [openMenuCaseId, setOpenMenuCaseId] = useState<string | null>(null);
+  const [deletingCaseId, setDeletingCaseId] = useState<string | null>(null);
+
+  async function load() {
+    const recentViewedIds = getRecentChartViews();
+    const [viewedCharts, caseLibrary] = await Promise.all([
+      chartService.listChartsByIds(recentViewedIds),
+      caseService.queryCaseLibrary({ sortBy: "last_activity_at" }),
+    ]);
+
+    const cases = caseLibrary.cases as DashboardCaseItem[];
+    setRecentViewedCharts(viewedCharts);
+    setRecentCases(cases.slice(0, 5));
+  }
 
   useEffect(() => {
-    async function load() {
-      const recentViewedIds = getRecentChartViews();
-      const [viewedCharts, caseLibrary] = await Promise.all([
-        chartService.listChartsByIds(recentViewedIds),
-        caseService.queryCaseLibrary({ sortBy: "last_activity_at" }),
-      ]);
-
-      const cases = caseLibrary.cases as DashboardCaseItem[];
-      setRecentViewedCharts(viewedCharts);
-      setRecentCases(cases.slice(0, 5));
-    }
-
     load().catch((error) => {
       console.error("Failed to load dashboard", error);
     });
   }, []);
+
+  async function handleDeleteCase(item: DashboardCaseItem) {
+    setOpenMenuCaseId(null);
+    if (!window.confirm(`确定删除「${item.chart_subject_name || item.case_code}」吗？这会删除完整资料，包括命盘、宫位、星曜、四化、案例、批注、时间线、标签关系和规则命中。`)) {
+      return;
+    }
+
+    setDeletingCaseId(item.id);
+    try {
+      await caseService.deleteCase(item.id);
+      await load();
+    } catch (error) {
+      console.error("Failed to delete dashboard case", error);
+      window.alert("删除案例失败，请查看控制台日志。");
+    } finally {
+      setDeletingCaseId(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -91,19 +110,37 @@ export function DashboardPage() {
               <EmptyState title="还没有案例" description="创建命盘后会自动生成主案例并进入案例库。" />
             ) : (
               recentCases.map((item) => (
-                <Link
+                <article
                   key={item.id}
-                  to={`/charts/${item.chart_id}/cases/${item.id}`}
-                  className="block rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                  className="relative rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-300 hover:bg-white"
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-medium text-slate-900">{item.chart_subject_name || item.case_code}</p>
-                      <p className="mt-1 text-sm text-slate-600">{item.consultation_topic || "未填写主题"}</p>
-                    </div>
-                    <StatusPill label={item.status} />
+                  <Link to={`/charts/${item.chart_id}/cases/${item.id}`} className="block pr-12">
+                    <p className="font-medium text-slate-900">{item.chart_subject_name || item.case_code}</p>
+                    <p className="mt-1 text-sm text-slate-600">{item.consultation_topic || "未填写主题"}</p>
+                  </Link>
+                  <div className="absolute right-3 top-3">
+                    <button
+                      type="button"
+                      onClick={() => setOpenMenuCaseId((current) => (current === item.id ? null : item.id))}
+                      className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-sm text-slate-500 shadow-sm transition hover:border-slate-300 hover:text-slate-800"
+                      aria-label={`打开${item.chart_subject_name || item.case_code}操作菜单`}
+                    >
+                      ...
+                    </button>
+                    {openMenuCaseId === item.id ? (
+                      <div className="absolute right-0 z-20 mt-2 w-32 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-[0_14px_34px_rgba(15,23,42,0.14)]">
+                        <button
+                          type="button"
+                          disabled={deletingCaseId === item.id}
+                          onClick={() => handleDeleteCase(item)}
+                          className="block w-full px-3 py-2 text-left text-sm text-rose-600 transition hover:bg-rose-50 disabled:opacity-50"
+                        >
+                          {deletingCaseId === item.id ? "删除中..." : "删除案例"}
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
-                </Link>
+                </article>
               ))
             )}
           </div>
