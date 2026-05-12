@@ -554,13 +554,13 @@ function PalaceInterpretationPopover({
         left: position.x,
         top: position.y,
         width: "min(420px, calc(100vw - 24px))",
-        maxHeight: "min(620px, calc(100vh - 24px))",
+        maxHeight: "min(620px, calc(100dvh - 24px))",
       }}
-      className="fixed z-[90] overflow-hidden rounded-[1.4rem] border border-[#c9b18d] bg-[#fffaf0] shadow-[0_24px_70px_rgba(56,38,18,0.26)]"
+      className="fixed z-[90] flex flex-col overflow-hidden rounded-[1.4rem] border border-[#c9b18d] bg-[#fffaf0] shadow-[0_24px_70px_rgba(56,38,18,0.26)]"
       onClick={(event) => event.stopPropagation()}
       onContextMenu={(event) => event.preventDefault()}
     >
-      <div className="flex items-start justify-between gap-3 border-b border-[#e0cfb2] bg-[#f5ead8] px-4 py-3">
+      <div className="shrink-0 flex items-start justify-between gap-3 border-b border-[#e0cfb2] bg-[#f5ead8] px-4 py-3">
         <div>
           <p className="text-[10px] uppercase tracking-[0.28em] text-[#9b7f52]">双击命中文案</p>
           <h3 className="mt-1 font-serif text-lg text-[#2f1b0d]">
@@ -576,7 +576,11 @@ function PalaceInterpretationPopover({
         </button>
       </div>
 
-      <div className="max-h-[calc(100vh-100px)] overflow-y-auto px-4 py-3">
+      <div
+        className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain px-4 py-3 [-webkit-overflow-scrolling:touch]"
+        onWheel={(event) => event.stopPropagation()}
+        onTouchMove={(event) => event.stopPropagation()}
+      >
         {hits.length > 0 ? (
           <div className="space-y-4">
             {(["major", "minor", "misc"] as PalaceInterpretationCategory[]).map((category) => {
