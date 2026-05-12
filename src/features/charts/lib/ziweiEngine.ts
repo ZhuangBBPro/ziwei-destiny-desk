@@ -1,5 +1,6 @@
 import { AppError } from "@/lib/errors";
 import { requireTimeGround } from "@/features/charts/lib/timeGroundMapper";
+import { resolveTrueSolarBirthDateTime } from "@/features/charts/lib/trueSolarTime";
 import type {
   ZiweiCreateConfigInput,
   ZiweiLibraryBridge,
@@ -156,14 +157,23 @@ export async function createRawZiweiBoard(input: ZiweiCreateConfigInput): Promis
   const bridge = await loadZiweiBridge();
   const { year, month, day } = parseBirthDate(input.birth_date);
   const solarBirthDate = resolveSolarBirthDate(bridge, input, { year, month, day });
-  const timeGroundMapping = requireTimeGround(input.birth_time);
+  const effectiveBirthDateTime = input.true_solar_time_enabled
+    ? resolveTrueSolarBirthDateTime({
+        date: solarBirthDate,
+        time: input.birth_time,
+        location: input.birth_location,
+      })
+    : null;
+  const effectiveBirthDate = effectiveBirthDateTime?.date ?? solarBirthDate;
+  const effectiveBirthTime = effectiveBirthDateTime?.time ?? input.birth_time;
+  const timeGroundMapping = requireTimeGround(effectiveBirthTime);
   const bornTimeGround = bridge.DayTimeGround.getByName(timeGroundMapping.libraryName);
 
   try {
     const builderInput = {
-      year: solarBirthDate.year,
-      month: solarBirthDate.month,
-      day: solarBirthDate.day,
+      year: effectiveBirthDate.year,
+      month: effectiveBirthDate.month,
+      day: effectiveBirthDate.day,
       bornTimeGround,
       configType: bridge.ConfigType.SKY,
       gender: mapGender(bridge, input.gender),

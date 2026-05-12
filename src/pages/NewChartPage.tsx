@@ -23,7 +23,7 @@ const defaultValues: ChartFormValues = {
   birth_time: "",
   birth_location: "",
   leap_month_flag: false,
-  true_solar_time_enabled: false,
+  true_solar_time_enabled: true,
   remarks: "",
 };
 
@@ -208,7 +208,7 @@ export function NewChartPage() {
               }
             />
             <input type="hidden" {...register("birth_location")} />
-            <p className="mt-1 text-xs text-slate-500">第一版用于文本保存；真太阳时换算暂不使用地点。</p>
+            <p className="mt-1 text-xs text-slate-500">出生地会用于本地真太阳时换算，不会联网定位。</p>
             <FieldError message={errors.birth_location?.message} />
           </div>
 
@@ -221,7 +221,7 @@ export function NewChartPage() {
 
           <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
             <input type="checkbox" {...register("true_solar_time_enabled")} />
-            <span className="text-sm text-slate-700">启用真太阳时字段（V1 仅保留，不做换算）</span>
+            <span className="text-sm text-slate-700">按出生地换算真太阳时（建议开启，对齐专业排盘）</span>
           </label>
 
           <label className="block md:col-span-2">
