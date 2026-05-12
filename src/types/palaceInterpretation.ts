@@ -30,4 +30,6 @@ export interface PalaceInterpretationHit {
   matchMode: PalaceInterpretationMatchMode;
   content: string[];
   matchedStars: string[];
+  sourceType?: "native" | "borrowed_opposite";
+  sourcePalaceName?: string;
 }

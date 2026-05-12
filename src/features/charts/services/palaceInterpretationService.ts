@@ -104,7 +104,11 @@ export class PalaceInterpretationService {
     await palaceInterpretationRepository.delete(id);
   }
 
-  async getHitsForPalace(palace: ChartPalaceRecord): Promise<PalaceInterpretationHit[]> {
+  async getHitsForPalace(
+    palace: ChartPalaceRecord,
+    starSourcePalace: ChartPalaceRecord = palace,
+    sourceType: PalaceInterpretationHit["sourceType"] = "native",
+  ): Promise<PalaceInterpretationHit[]> {
     try {
       await this.ensureDefaultLibrarySeeded();
       const entries = (await palaceInterpretationRepository.listByPalace(
@@ -116,9 +120,9 @@ export class PalaceInterpretationService {
       }
 
       const starNames = [
-        ...palace.major_stars_summary,
-        ...palace.minor_stars_summary,
-        ...palace.sha_stars_summary,
+        ...starSourcePalace.major_stars_summary,
+        ...starSourcePalace.minor_stars_summary,
+        ...starSourcePalace.sha_stars_summary,
       ];
       const normalizedStarNames = new Set(starNames.map(normalizeStarName));
 
@@ -141,13 +145,15 @@ export class PalaceInterpretationService {
                 matchMode: entry.match_mode,
                 content: entry.content,
                 matchedStars: matchedStars.length > 0 ? matchedStars : entry.aliases,
+                sourceType,
+                sourcePalaceName: starSourcePalace.palace_name,
               }
             : null;
         })
         .filter((entry): entry is PalaceInterpretationHit => Boolean(entry));
     } catch (error) {
       console.error("Failed to load editable palace interpretations", error);
-      return getDefaultPalaceInterpretationHits(palace);
+      return getDefaultPalaceInterpretationHits(palace, starSourcePalace, sourceType);
     }
   }
 

@@ -3954,21 +3954,25 @@ const CATEGORY_ORDER: Record<PalaceInterpretationCategory, number> = {
   misc: 2,
 };
 
-export function getDefaultPalaceInterpretationHits(palace: ChartPalaceRecord): PalaceInterpretationHit[] {
+export function getDefaultPalaceInterpretationHits(
+  palace: ChartPalaceRecord,
+  starSourcePalace: ChartPalaceRecord = palace,
+  sourceType: PalaceInterpretationHit["sourceType"] = "native",
+): PalaceInterpretationHit[] {
   const entries = PALACE_INTERPRETATION_LIBRARY[normalizePalaceName(palace.palace_name)] ?? [];
   if (entries.length === 0) {
     return [];
   }
 
   const starNames = [
-    ...palace.major_stars_summary,
-    ...palace.minor_stars_summary,
-    ...palace.sha_stars_summary,
+    ...starSourcePalace.major_stars_summary,
+    ...starSourcePalace.minor_stars_summary,
+    ...starSourcePalace.sha_stars_summary,
   ];
   const normalizedStarNames = new Set(starNames.map(normalizeStarName));
 
   return entries
-    .map((entry) => {
+    .map((entry): PalaceInterpretationHit | null => {
       const normalizedAliases = entry.aliases.map(normalizeStarName);
       const matchedStars = starNames.filter((starName) => normalizedAliases.includes(normalizeStarName(starName)));
       const isMatched =
@@ -3976,7 +3980,14 @@ export function getDefaultPalaceInterpretationHits(palace: ChartPalaceRecord): P
           ? [...new Set(normalizedAliases)].every((alias) => normalizedStarNames.has(alias))
           : matchedStars.length > 0;
 
-      return isMatched ? { ...entry, matchedStars: matchedStars.length > 0 ? matchedStars : entry.aliases } : null;
+      return isMatched
+        ? {
+            ...entry,
+            matchedStars: matchedStars.length > 0 ? matchedStars : entry.aliases,
+            sourceType,
+            sourcePalaceName: starSourcePalace.palace_name,
+          }
+        : null;
     })
     .filter((entry): entry is PalaceInterpretationHit => Boolean(entry))
     .sort((a, b) => CATEGORY_ORDER[a.category] - CATEGORY_ORDER[b.category]);

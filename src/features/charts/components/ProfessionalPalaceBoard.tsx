@@ -132,6 +132,7 @@ export function ProfessionalPalaceBoard({
   const activeInterpretationPalace = interpretationPopover
     ? orderedPalaces.find((palace) => palace.palace_code === interpretationPopover.palaceCode)
     : undefined;
+  const activeBorrowedStarSourcePalace = getBorrowedStarSourcePalace(orderedPalaces, activeInterpretationPalace);
   const [interpretationHits, setInterpretationHits] = useState<PalaceInterpretationHit[]>([]);
 
   function openInterpretationPopover(palace: ChartPalaceRecord, clientX: number, clientY: number) {
@@ -185,11 +186,19 @@ export function ProfessionalPalaceBoard({
       };
     }
 
-    palaceInterpretationService
-      .getHitsForPalace(activeInterpretationPalace)
+    Promise.all([
+      palaceInterpretationService.getHitsForPalace(activeInterpretationPalace, activeInterpretationPalace, "native"),
+      activeBorrowedStarSourcePalace
+        ? palaceInterpretationService.getHitsForPalace(
+            activeInterpretationPalace,
+            activeBorrowedStarSourcePalace,
+            "borrowed_opposite",
+          )
+        : Promise.resolve([]),
+    ])
       .then((hits) => {
         if (isActive) {
-          setInterpretationHits(hits);
+          setInterpretationHits(dedupeInterpretationHits(hits.flat()));
         }
       })
       .catch((error) => {
@@ -202,7 +211,7 @@ export function ProfessionalPalaceBoard({
     return () => {
       isActive = false;
     };
-  }, [activeInterpretationPalace?.id]);
+  }, [activeBorrowedStarSourcePalace?.id, activeInterpretationPalace?.id]);
 
   useEffect(() => {
     if (!interpretationPopover) {
@@ -354,6 +363,7 @@ export function ProfessionalPalaceBoard({
       {interpretationPopover && activeInterpretationPalace ? (
         <PalaceInterpretationPopover
           palace={activeInterpretationPalace}
+          borrowedStarSourcePalace={activeBorrowedStarSourcePalace}
           hits={interpretationHits}
           position={interpretationPopover}
           onClose={() => setInterpretationPopover(null)}
@@ -535,16 +545,19 @@ function TriangleConnectionLayer({ lines }: { lines: ConnectionLine[] }) {
 
 function PalaceInterpretationPopover({
   palace,
+  borrowedStarSourcePalace,
   hits,
   position,
   onClose,
 }: {
   palace: ChartPalaceRecord;
+  borrowedStarSourcePalace?: ChartPalaceRecord;
   hits: PalaceInterpretationHit[];
   position: InterpretationPopoverState;
   onClose: () => void;
 }) {
-  const groupedHits = groupInterpretationHits(hits);
+  const nativeHits = hits.filter((hit) => hit.sourceType !== "borrowed_opposite");
+  const borrowedHits = hits.filter((hit) => hit.sourceType === "borrowed_opposite");
 
   return (
     <div
@@ -566,6 +579,12 @@ function PalaceInterpretationPopover({
           <h3 className="mt-1 font-serif text-lg text-[#2f1b0d]">
             {palace.palace_name} · {palace.heavenly_stem}{palace.earthly_branch}
           </h3>
+          {borrowedStarSourcePalace ? (
+            <p className="mt-1 text-xs text-[#7b5d39]">
+              空宫借对宫：{borrowedStarSourcePalace.palace_name} · {borrowedStarSourcePalace.heavenly_stem}
+              {borrowedStarSourcePalace.earthly_branch}
+            </p>
+          ) : null}
         </div>
         <button
           type="button"
@@ -582,44 +601,20 @@ function PalaceInterpretationPopover({
         onTouchMove={(event) => event.stopPropagation()}
       >
         {hits.length > 0 ? (
-          <div className="space-y-4">
-            {(["major", "minor", "misc"] as PalaceInterpretationCategory[]).map((category) => {
-              const categoryHits = groupedHits.get(category) ?? [];
-              if (categoryHits.length === 0) {
-                return null;
-              }
-
-              return (
-                <section key={category} className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="h-px flex-1 bg-[#dec8a5]" />
-                    <span className="rounded-full bg-[#efe1ca] px-3 py-1 text-xs font-medium text-[#6f5030]">
-                      {INTERPRETATION_CATEGORY_LABELS[category]}
-                    </span>
-                    <span className="h-px flex-1 bg-[#dec8a5]" />
-                  </div>
-
-                  {categoryHits.map((hit, index) => (
-                    <article
-                      key={`${hit.category}-${hit.title}-${index}`}
-                      className="rounded-2xl border border-[#e2cfaf] bg-white/75 p-3"
-                    >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h4 className="font-serif text-base text-[#3a2413]">{hit.title}</h4>
-                        <span className="rounded-full bg-[#f4ead8] px-2 py-0.5 text-[10px] text-[#7b5d39]">
-                          命中：{dedupeText(hit.matchedStars).join("、")}
-                        </span>
-                      </div>
-                      <div className="mt-2 space-y-1.5 text-xs leading-5 text-[#4c3825]">
-                        {hit.content.map((line, lineIndex) => (
-                          <p key={`${hit.title}-${lineIndex}`}>{line}</p>
-                        ))}
-                      </div>
-                    </article>
-                  ))}
-                </section>
-              );
-            })}
+          <div className="space-y-5">
+            {nativeHits.length > 0 ? (
+              <InterpretationHitSection
+                title={borrowedStarSourcePalace ? "本宫原有辅杂曜命中" : "本宫星曜命中"}
+                hits={nativeHits}
+              />
+            ) : null}
+            {borrowedHits.length > 0 ? (
+              <InterpretationHitSection
+                title={`空宫借对宫星系命中 · ${borrowedStarSourcePalace?.palace_name ?? "对宫"}`}
+                description="中州派看空宫时不抹掉本宫原有星曜，这里把对宫星系另列为借入参考。"
+                hits={borrowedHits}
+              />
+            ) : null}
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-[#d8c5a7] bg-white/60 p-4 text-sm leading-6 text-[#6e5840]">
@@ -633,6 +628,70 @@ function PalaceInterpretationPopover({
   );
 }
 
+function InterpretationHitSection({
+  title,
+  description,
+  hits,
+}: {
+  title: string;
+  description?: string;
+  hits: PalaceInterpretationHit[];
+}) {
+  const groupedHits = groupInterpretationHits(hits);
+
+  return (
+    <section className="space-y-3">
+      <div className="rounded-2xl border border-[#e2cfaf] bg-white/65 px-3 py-2">
+        <p className="text-xs font-medium text-[#6e4422]">{title}</p>
+        {description ? <p className="mt-1 text-xs leading-5 text-[#6e5840]">{description}</p> : null}
+      </div>
+
+      {(["major", "minor", "misc"] as PalaceInterpretationCategory[]).map((category) => {
+        const categoryHits = groupedHits.get(category) ?? [];
+        if (categoryHits.length === 0) {
+          return null;
+        }
+
+        return (
+          <div key={category} className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="h-px flex-1 bg-[#dec8a5]" />
+              <span className="rounded-full bg-[#efe1ca] px-3 py-1 text-xs font-medium text-[#6f5030]">
+                {INTERPRETATION_CATEGORY_LABELS[category]}
+              </span>
+              <span className="h-px flex-1 bg-[#dec8a5]" />
+            </div>
+
+            {categoryHits.map((hit, index) => (
+              <article
+                key={`${hit.category}-${hit.title}-${hit.sourceType ?? "native"}-${index}`}
+                className="rounded-2xl border border-[#e2cfaf] bg-white/75 p-3"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <h4 className="font-serif text-base text-[#3a2413]">{hit.title}</h4>
+                  <span className="rounded-full bg-[#f4ead8] px-2 py-0.5 text-[10px] text-[#7b5d39]">
+                    命中：{dedupeText(hit.matchedStars).join("、")}
+                  </span>
+                  {hit.sourceType === "borrowed_opposite" ? (
+                    <span className="rounded-full bg-[#e7f0dd] px-2 py-0.5 text-[10px] text-[#4e6b2d]">
+                      借：{hit.sourcePalaceName ?? "对宫"}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="mt-2 space-y-1.5 text-xs leading-5 text-[#4c3825]">
+                  {hit.content.map((line, lineIndex) => (
+                    <p key={`${hit.title}-${lineIndex}`}>{line}</p>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
 function groupInterpretationHits(hits: PalaceInterpretationHit[]) {
   return hits.reduce((groups, hit) => {
     const current = groups.get(hit.category) ?? [];
@@ -640,6 +699,41 @@ function groupInterpretationHits(hits: PalaceInterpretationHit[]) {
     groups.set(hit.category, current);
     return groups;
   }, new Map<PalaceInterpretationCategory, PalaceInterpretationHit[]>());
+}
+
+function dedupeInterpretationHits(hits: PalaceInterpretationHit[]) {
+  const seen = new Set<string>();
+  return hits.filter((hit) => {
+    const key = [
+      hit.sourceType ?? "native",
+      hit.category,
+      hit.title,
+      hit.matchedStars.map((star) => star.trim()).sort().join("|"),
+    ].join("::");
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+function getBorrowedStarSourcePalace(
+  palaces: ChartPalaceRecord[],
+  palace: ChartPalaceRecord | undefined,
+) {
+  if (!palace || palace.major_stars_summary.length > 0) {
+    return undefined;
+  }
+
+  const palaceIndex = palaces.findIndex((item) => item.palace_code === palace.palace_code);
+  if (palaceIndex < 0) {
+    return undefined;
+  }
+
+  return palaces[(palaceIndex + 6) % palaces.length];
 }
 
 function getAdaptivePopoverPosition(clientX: number, clientY: number) {
