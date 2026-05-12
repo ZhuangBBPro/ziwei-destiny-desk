@@ -554,7 +554,7 @@ function PalaceInterpretationPopover({
         left: position.x,
         top: position.y,
         width: "min(420px, calc(100vw - 24px))",
-        maxHeight: "min(620px, calc(100dvh - 24px))",
+        height: "min(620px, calc(100dvh - 24px))",
       }}
       className="fixed z-[90] flex flex-col overflow-hidden rounded-[1.4rem] border border-[#c9b18d] bg-[#fffaf0] shadow-[0_24px_70px_rgba(56,38,18,0.26)]"
       onClick={(event) => event.stopPropagation()}
@@ -577,7 +577,7 @@ function PalaceInterpretationPopover({
       </div>
 
       <div
-        className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain px-4 py-3 [-webkit-overflow-scrolling:touch]"
+        className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain px-4 pb-12 pt-3 [-webkit-overflow-scrolling:touch]"
         onWheel={(event) => event.stopPropagation()}
         onTouchMove={(event) => event.stopPropagation()}
       >
