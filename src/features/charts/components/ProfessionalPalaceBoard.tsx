@@ -618,9 +618,7 @@ function PalaceInterpretationPopover({
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-[#d8c5a7] bg-white/60 p-4 text-sm leading-6 text-[#6e5840]">
-            {isParentPalaceName(palace.palace_name)
-              ? "父母宫文案还在整理中，第一版先不展示。"
-              : "当前宫位的主星、辅星、杂星暂未命中文案。后续可以继续补充该宫位或星曜条目。"}
+            当前宫位的主星、辅星、杂星暂未命中文案。后续可以继续补充该宫位或星曜条目。
           </div>
         )}
       </div>
@@ -749,10 +747,6 @@ function getAdaptivePopoverPosition(clientX: number, clientY: number) {
 
 function dedupeText(items: string[]) {
   return [...new Set(items)];
-}
-
-function isParentPalaceName(palaceName: string) {
-  return palaceName === "父母" || palaceName === "父母宫" || palaceName === "父母宮";
 }
 
 function getStarTextClass(starName: string, tone: "major" | "minor" | "misc") {
