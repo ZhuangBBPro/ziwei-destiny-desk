@@ -184,7 +184,7 @@ export function NewChartPage() {
           </label>
 
           <div className="block">
-            <span className="text-sm font-medium text-slate-700">出生时辰 / 时间</span>
+            <span className="text-sm font-medium text-slate-700">钟表时间（自动换算时填写）</span>
             <TimePicker
               value={birthTime}
               onChange={(time) =>
@@ -195,7 +195,7 @@ export function NewChartPage() {
               }
             />
             <input type="hidden" {...register("birth_time")} />
-            <p className="mt-1 text-xs text-slate-500">按 24 小时制选择，统一保存为 HH:mm。</p>
+            <p className="mt-1 text-xs text-slate-500">如果下方已填写手动真太阳时，这里可以留空。</p>
             <FieldError message={errors.birth_time?.message} />
           </div>
 
@@ -234,10 +234,15 @@ export function NewChartPage() {
             <TimePicker
               value={manualTrueSolarTime}
               onChange={(time) =>
-                setValue("manual_true_solar_time", time, {
-                  shouldDirty: true,
-                  shouldValidate: true,
-                })
+                {
+                  setValue("manual_true_solar_time", time, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                  if (time) {
+                    setValue("true_solar_time_enabled", false, { shouldDirty: true });
+                  }
+                }
               }
             />
             <input type="hidden" {...register("manual_true_solar_time")} />

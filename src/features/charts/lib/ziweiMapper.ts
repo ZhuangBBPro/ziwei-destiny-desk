@@ -231,7 +231,7 @@ export function buildChartAggregate(
     gender: input.gender,
     birth_calendar_type: input.birth_calendar_type,
     birth_date: input.birth_date,
-    birth_time: input.birth_time,
+    birth_time: input.manual_true_solar_time || input.birth_time,
     birth_timezone: input.birth_timezone,
     birth_location: input.birth_location,
     leap_month_flag: input.leap_month_flag,

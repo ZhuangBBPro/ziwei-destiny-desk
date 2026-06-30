@@ -15,9 +15,14 @@ export const chartFormSchema = z.object({
   birth_time: z
     .string()
     .trim()
-    .min(1, "请输入出生时辰")
-    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "请选择出生时间")
-    .refine((value) => normalizeTimeGroundInput(value) !== null, "出生时间无法映射到十二时辰"),
+    .refine(
+      (value) => value === "" || /^([01]\d|2[0-3]):[0-5]\d$/.test(value),
+      "钟表时间必须是 HH:mm 格式",
+    )
+    .refine(
+      (value) => value === "" || normalizeTimeGroundInput(value) !== null,
+      "钟表时间无法映射到十二时辰",
+    ),
   birth_location: z.string().trim(),
   leap_month_flag: z.boolean(),
   true_solar_time_enabled: z.boolean(),
@@ -30,6 +35,14 @@ export const chartFormSchema = z.object({
     ),
   manual_true_solar_day_offset: z.enum(["-1", "0", "1"]),
   remarks: z.string().trim(),
+}).superRefine((values, context) => {
+  if (!values.birth_time && !values.manual_true_solar_time) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "请输入钟表时间，或直接填写手动真太阳时",
+      path: ["birth_time"],
+    });
+  }
 });
 
 export type ChartFormValues = z.infer<typeof chartFormSchema>;
