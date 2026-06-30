@@ -48,6 +48,8 @@ export async function createDemoCaseSeed() {
       birth_location: "上海",
       leap_month_flag: false,
       true_solar_time_enabled: false,
+      manual_true_solar_time: "",
+      manual_true_solar_day_offset: "0",
       remarks: `系统自动生成的示例案例 ${suffix}，用于体验命盘、批注、标签和时间线。`,
     });
 

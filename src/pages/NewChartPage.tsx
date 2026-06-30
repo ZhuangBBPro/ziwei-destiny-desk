@@ -24,6 +24,8 @@ const defaultValues: ChartFormValues = {
   birth_location: "",
   leap_month_flag: false,
   true_solar_time_enabled: true,
+  manual_true_solar_time: "",
+  manual_true_solar_day_offset: "0",
   remarks: "",
 };
 
@@ -65,6 +67,7 @@ export function NewChartPage() {
   const birthCalendarType = watch("birth_calendar_type");
   const birthLocation = watch("birth_location");
   const birthTime = watch("birth_time");
+  const manualTrueSolarTime = watch("manual_true_solar_time");
 
   useEffect(() => {
     preloadZiweiEngine().catch((error) => {
@@ -208,8 +211,37 @@ export function NewChartPage() {
               }
             />
             <input type="hidden" {...register("birth_location")} />
-            <p className="mt-1 text-xs text-slate-500">出生地会用于本地真太阳时换算，不会联网定位。</p>
+            <p className="mt-1 text-xs text-slate-500">国内地点可自动换算；外国地点可手动输入，并填写下方真太阳时。</p>
             <FieldError message={errors.birth_location?.message} />
+          </div>
+
+          <div className="rounded-2xl border border-[#dcc8a9] bg-[#fffaf2] p-4 md:col-span-2">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <span className="text-sm font-medium text-[#4d3926]">手动真太阳时（可选）</span>
+                <p className="mt-1 text-xs text-[#8b6b3c]">外国出生或已经自行换算时填写；填写后优先使用，不再按地点自动换算。</p>
+              </div>
+              <select
+                {...register("manual_true_solar_day_offset")}
+                className="rounded-xl border border-[#d9c7a9] bg-white px-3 py-2 text-sm text-[#4d3926]"
+                aria-label="真太阳时日期偏移"
+              >
+                <option value="-1">前一天</option>
+                <option value="0">当天</option>
+                <option value="1">后一天</option>
+              </select>
+            </div>
+            <TimePicker
+              value={manualTrueSolarTime}
+              onChange={(time) =>
+                setValue("manual_true_solar_time", time, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
+              }
+            />
+            <input type="hidden" {...register("manual_true_solar_time")} />
+            <FieldError message={errors.manual_true_solar_time?.message} />
           </div>
 
           {birthCalendarType === "lunar" ? (
@@ -221,7 +253,7 @@ export function NewChartPage() {
 
           <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
             <input type="checkbox" {...register("true_solar_time_enabled")} />
-            <span className="text-sm text-slate-700">按出生地换算真太阳时（建议开启，对齐专业排盘）</span>
+            <span className="text-sm text-slate-700">自动按出生地换算真太阳时（适用于国内地点）</span>
           </label>
 
           <label className="block md:col-span-2">

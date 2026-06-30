@@ -10,6 +10,8 @@ export interface ChartRecord extends BaseEntity {
   birth_location: string;
   leap_month_flag: boolean;
   true_solar_time_enabled: boolean;
+  manual_true_solar_time?: string;
+  manual_true_solar_day_offset?: "-1" | "0" | "1";
   chart_system: string;
   chart_version: string;
   life_palace_branch: string;
@@ -68,6 +70,8 @@ export interface ChartCreateInput {
   birth_location: string;
   leap_month_flag: boolean;
   true_solar_time_enabled: boolean;
+  manual_true_solar_time: string;
+  manual_true_solar_day_offset: "-1" | "0" | "1";
   remarks: string;
 }
 

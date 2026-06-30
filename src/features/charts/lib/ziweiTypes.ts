@@ -38,6 +38,8 @@ export interface ZiweiCreateConfigInput {
   birth_location: string;
   leap_month_flag: boolean;
   true_solar_time_enabled: boolean;
+  manual_true_solar_time: string;
+  manual_true_solar_day_offset: "-1" | "0" | "1";
   remarks: string;
 }
 

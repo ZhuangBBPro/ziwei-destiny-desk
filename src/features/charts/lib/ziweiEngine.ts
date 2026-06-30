@@ -157,15 +157,18 @@ export async function createRawZiweiBoard(input: ZiweiCreateConfigInput): Promis
   const bridge = await loadZiweiBridge();
   const { year, month, day } = parseBirthDate(input.birth_date);
   const solarBirthDate = resolveSolarBirthDate(bridge, input, { year, month, day });
-  const effectiveBirthDateTime = input.true_solar_time_enabled
+  const manualTrueSolarTime = (input.manual_true_solar_time ?? "").trim();
+  const automaticTrueSolarDateTime = !manualTrueSolarTime && input.true_solar_time_enabled
     ? resolveTrueSolarBirthDateTime({
         date: solarBirthDate,
         time: input.birth_time,
         location: input.birth_location,
       })
     : null;
-  const effectiveBirthDate = effectiveBirthDateTime?.date ?? solarBirthDate;
-  const effectiveBirthTime = effectiveBirthDateTime?.time ?? input.birth_time;
+  const effectiveBirthDate = manualTrueSolarTime
+    ? addDays(solarBirthDate, Number(input.manual_true_solar_day_offset ?? "0"))
+    : automaticTrueSolarDateTime?.date ?? solarBirthDate;
+  const effectiveBirthTime = manualTrueSolarTime || automaticTrueSolarDateTime?.time || input.birth_time;
   const timeGroundMapping = requireTimeGround(effectiveBirthTime);
   const bornTimeGround = bridge.DayTimeGround.getByName(timeGroundMapping.libraryName);
 
@@ -190,6 +193,15 @@ export async function createRawZiweiBoard(input: ZiweiCreateConfigInput): Promis
       error,
     );
   }
+}
+
+function addDays(date: { year: number; month: number; day: number }, dayOffset: number) {
+  const adjustedDate = new Date(Date.UTC(date.year, date.month - 1, date.day + dayOffset));
+  return {
+    year: adjustedDate.getUTCFullYear(),
+    month: adjustedDate.getUTCMonth() + 1,
+    day: adjustedDate.getUTCDate(),
+  };
 }
 
 export async function preloadZiweiEngine() {

@@ -21,6 +21,14 @@ export const chartFormSchema = z.object({
   birth_location: z.string().trim(),
   leap_month_flag: z.boolean(),
   true_solar_time_enabled: z.boolean(),
+  manual_true_solar_time: z
+    .string()
+    .trim()
+    .refine(
+      (value) => value === "" || /^([01]\d|2[0-3]):[0-5]\d$/.test(value),
+      "手动真太阳时必须是 HH:mm 格式",
+    ),
+  manual_true_solar_day_offset: z.enum(["-1", "0", "1"]),
   remarks: z.string().trim(),
 });
 
