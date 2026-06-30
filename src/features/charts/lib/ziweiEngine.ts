@@ -169,14 +169,15 @@ export async function createRawZiweiBoard(input: ZiweiCreateConfigInput): Promis
     ? addDays(solarBirthDate, Number(input.manual_true_solar_day_offset ?? "0"))
     : automaticTrueSolarDateTime?.date ?? solarBirthDate;
   const effectiveBirthTime = manualTrueSolarTime || automaticTrueSolarDateTime?.time || input.birth_time;
-  const timeGroundMapping = requireTimeGround(effectiveBirthTime);
+  const libraryBirthDateTime = normalizeLateZiForLibrary(effectiveBirthDate, effectiveBirthTime);
+  const timeGroundMapping = requireTimeGround(libraryBirthDateTime.time);
   const bornTimeGround = bridge.DayTimeGround.getByName(timeGroundMapping.libraryName);
 
   try {
     const builderInput = {
-      year: effectiveBirthDate.year,
-      month: effectiveBirthDate.month,
-      day: effectiveBirthDate.day,
+      year: libraryBirthDateTime.date.year,
+      month: libraryBirthDateTime.date.month,
+      day: libraryBirthDateTime.date.day,
       bornTimeGround,
       configType: bridge.ConfigType.SKY,
       gender: mapGender(bridge, input.gender),
@@ -193,6 +194,23 @@ export async function createRawZiweiBoard(input: ZiweiCreateConfigInput): Promis
       error,
     );
   }
+}
+
+function normalizeLateZiForLibrary(
+  date: { year: number; month: number; day: number },
+  time: string,
+) {
+  const match = time.match(/^(\d{2}):(\d{2})$/);
+  if (!match || Number(match[1]) !== 23) {
+    return { date, time };
+  }
+
+  // fortel 不会自动执行子初换日。专业盘在 23:00 后按次日早子时安星，
+  // 但用户输入和详情展示仍保留原始真太阳日期与时间。
+  return {
+    date: addDays(date, 1),
+    time: `00:${match[2]}`,
+  };
 }
 
 function addDays(date: { year: number; month: number; day: number }, dayOffset: number) {
