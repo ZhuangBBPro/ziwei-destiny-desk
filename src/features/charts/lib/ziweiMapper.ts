@@ -11,6 +11,7 @@ import type {
   ChartTransformRecord,
 } from "@/types";
 import type { ZiweiCreateConfigInput, ZiweiMappedBoard, ZiweiRawBoard } from "@/features/charts/lib/ziweiTypes";
+import { applyWenmoChartPreset } from "@/features/charts/lib/wenmoChartPreset";
 
 const TEMPLE_CODE_MAP: Record<string, string> = {
   命宫: "life",
@@ -90,14 +91,22 @@ function normalizeTempleName(input: string) {
   return input.replace("宮", "宫");
 }
 
-function normalizeStarList(list: unknown[] | undefined) {
+function normalizeStarList(
+  list: unknown[] | undefined,
+  brightnessByStar: Record<string, string> = {},
+  transformByStar: Record<string, string> = {},
+) {
   if (!Array.isArray(list)) {
     return [];
   }
 
   return list.map((item) => {
     if (typeof item === "string") {
-      return { star_name: item, brightness_level: null, transform_type: null };
+      return {
+        star_name: item,
+        brightness_level: brightnessByStar[item] ?? null,
+        transform_type: transformByStar[item] ?? null,
+      };
     }
 
     const record = item as Record<string, unknown>;
@@ -107,32 +116,53 @@ function normalizeStarList(list: unknown[] | undefined) {
         readName(record.star) ||
         String(record.key ?? record.name ?? "未知星曜"),
       brightness_level:
-        typeof record.brightness === "number" || typeof record.brightness === "string"
+        brightnessByStar[readName(record.name) || readName(record.star)] ??
+        (typeof record.brightness === "number" || typeof record.brightness === "string"
           ? String(record.brightness)
-          : null,
-      transform_type: readName(record.derivative) || readName(record.transform) || null,
+          : null),
+      transform_type:
+        transformByStar[readName(record.name) || readName(record.star)] ??
+        (readName(record.derivative) || readName(record.transform) || null),
     };
   });
 }
 
+function readStringRecord(input: unknown) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return {} as Record<string, string>;
+  }
+
+  return Object.fromEntries(
+    Object.entries(input as Record<string, unknown>)
+      .map(([key, value]) => [key, readName(value)] as const)
+      .filter((entry) => entry[0] && entry[1]),
+  );
+}
+
 export function mapRawZiweiBoard(board: ZiweiRawBoard): ZiweiMappedBoard {
-  const serializedBoard =
+  const rawSerializedBoard =
     typeof board.toJSON === "function"
       ? (board.toJSON() as ZiweiRawBoard)
       : board;
+  const serializedBoard = applyWenmoChartPreset(rawSerializedBoard);
 
   const cells = Array.isArray(serializedBoard.cells) ? serializedBoard.cells : [];
   if (!serializedBoard.config || cells.length === 0) {
     throw new AppError("排盘结果不完整，无法建立命盘快照。", "ZIWEI_BOARD_INCOMPLETE", board);
   }
   const cellSnapshots = cells.map((cell) => toPlainJson(cell));
+  const derivativeMap = readStringRecord(serializedBoard.bornStarDerivativeMap);
+  const transformByStar = Object.fromEntries(
+    Object.entries(derivativeMap).map(([derivative, starName]) => [starName, derivative]),
+  );
 
   const palaces = cells.flatMap((cell, index) => {
     const temples = Array.isArray(cell.temples) ? cell.temples.map(readName).map(normalizeTempleName) : [];
-    const majorStars = normalizeStarList(cell.majorStars);
-    const minorStars = normalizeStarList(cell.minorStars);
-    const miniStars = normalizeStarList(cell.miniStars);
-    const miscStars = normalizeStarList(cell.miscStars);
+    const brightnessByStar = readStringRecord(cell.starBrightness);
+    const majorStars = normalizeStarList(cell.majorStars, brightnessByStar, transformByStar);
+    const minorStars = normalizeStarList(cell.minorStars, brightnessByStar, transformByStar);
+    const miniStars = normalizeStarList(cell.miniStars, brightnessByStar, transformByStar);
+    const miscStars = normalizeStarList(cell.miscStars, brightnessByStar, transformByStar);
     const earthly_branch = readName(cell.ground) || "";
     const heavenly_stem = readName(cell.sky) || "";
     const is_body_palace = temples.some((item) => item === "身宫");
@@ -155,6 +185,54 @@ export function mapRawZiweiBoard(board: ZiweiRawBoard): ZiweiMappedBoard {
 
   const lifePalace = palaces.find((item) => item.palace_name === "命宫");
   const bodyPalace = palaces.find((item) => item.is_body_palace);
+  const stars = palaces.flatMap((palace) => {
+    const cell = palace.palace_snapshot_json;
+    const brightnessByStar = readStringRecord(cell.starBrightness);
+    return [
+      ...normalizeStarList(cell.majorStars as unknown[] | undefined, brightnessByStar, transformByStar).map((star) => ({
+        palace_code: palace.palace_code,
+        star_name: star.star_name,
+        star_category: "major" as const,
+        brightness_level: star.brightness_level,
+        transform_type: star.transform_type,
+        notes: "",
+      })),
+      ...normalizeStarList(cell.minorStars as unknown[] | undefined, brightnessByStar, transformByStar).map((star) => ({
+        palace_code: palace.palace_code,
+        star_name: star.star_name,
+        star_category: "minor" as const,
+        brightness_level: star.brightness_level,
+        transform_type: star.transform_type,
+        notes: "",
+      })),
+      ...normalizeStarList(cell.miniStars as unknown[] | undefined, brightnessByStar, transformByStar).map((star) => ({
+        palace_code: palace.palace_code,
+        star_name: star.star_name,
+        star_category: "mini" as const,
+        brightness_level: star.brightness_level,
+        transform_type: star.transform_type,
+        notes: "",
+      })),
+      ...normalizeStarList(cell.miscStars as unknown[] | undefined, brightnessByStar, transformByStar).map((star) => ({
+        palace_code: palace.palace_code,
+        star_name: star.star_name,
+        star_category: "misc" as const,
+        brightness_level: star.brightness_level,
+        transform_type: star.transform_type,
+        notes: "",
+      })),
+    ];
+  });
+  const transforms = Object.entries(derivativeMap).map(([transformType, starName]) => ({
+    transform_type: transformType,
+    star_name: starName,
+    source_scope: "natal",
+    target_palace_code: stars.find((star) => star.star_name === starName)?.palace_code ?? null,
+    source_heavenly_stem: readName(serializedBoard.config?.yearSky) || null,
+    payload_json: {
+      preset: serializedBoard.chartPreset?.id ?? "wenmo-default-2026-07",
+    },
+  }));
 
   return {
     life_palace_branch: lifePalace?.earthly_branch ?? "",
@@ -163,46 +241,8 @@ export function mapRawZiweiBoard(board: ZiweiRawBoard): ZiweiMappedBoard {
     body_master_star: readName(serializedBoard.bodyMaster),
     five_element_class: readName(serializedBoard.element),
     palaces,
-    stars: palaces.flatMap((palace) => {
-      const cell = palace.palace_snapshot_json;
-      return [
-        ...normalizeStarList(cell.majorStars as unknown[] | undefined).map((star) => ({
-          palace_code: palace.palace_code,
-          star_name: star.star_name,
-          star_category: "major" as const,
-          brightness_level: star.brightness_level,
-          transform_type: star.transform_type,
-          notes: "",
-        })),
-        ...normalizeStarList(cell.minorStars as unknown[] | undefined).map((star) => ({
-          palace_code: palace.palace_code,
-          star_name: star.star_name,
-          star_category: "minor" as const,
-          brightness_level: star.brightness_level,
-          transform_type: star.transform_type,
-          notes: "",
-        })),
-        ...normalizeStarList(cell.miniStars as unknown[] | undefined).map((star) => ({
-          palace_code: palace.palace_code,
-          star_name: star.star_name,
-          star_category: "mini" as const,
-          brightness_level: star.brightness_level,
-          transform_type: star.transform_type,
-          notes: "",
-        })),
-        ...normalizeStarList(cell.miscStars as unknown[] | undefined).map((star) => ({
-          palace_code: palace.palace_code,
-          star_name: star.star_name,
-          star_category: "misc" as const,
-          brightness_level: star.brightness_level,
-          transform_type: star.transform_type,
-          notes: "",
-        })),
-      ];
-    }),
-    // TODO: fortel-ziweidoushu 的四化结构待在实际安装包导出与运行结果确认后进一步拆表。
-    // 当前版本先把相关原始结构优先保存在 snapshot_json 中，保证展示与持久化稳定。
-    transforms: [],
+    stars,
+    transforms,
     snapshot: {
       config: toPlainJson(serializedBoard.config),
       element: readName(serializedBoard.element),
@@ -210,9 +250,9 @@ export function mapRawZiweiBoard(board: ZiweiRawBoard): ZiweiMappedBoard {
       bodyMaster: readName(serializedBoard.bodyMaster),
       cells: cellSnapshots,
       bornStarDerivativeMap: toPlainJson(
-        (serializedBoard as Record<string, unknown>).bornStarDerivativeMap ??
-          (board as Record<string, unknown>).bornStarDerivativeMap,
+        serializedBoard.bornStarDerivativeMap,
       ),
+      chartPreset: toPlainJson(serializedBoard.chartPreset),
       runtimeContextPreview: null,
     },
   };
@@ -388,6 +428,119 @@ export function repairChartAggregateDisplay(aggregate: ChartAggregate): ChartAgg
     chart: repairChartRecordDisplay(aggregate.chart, palaces),
     palaces,
   };
+}
+
+export function upgradeChartAggregatePreset(aggregate: ChartAggregate) {
+  const currentPreset = aggregate.chart.snapshot_json.chartPreset;
+  if (
+    currentPreset &&
+    typeof currentPreset === "object" &&
+    "id" in currentPreset &&
+    currentPreset.id === "wenmo-default-2026-07"
+  ) {
+    return { aggregate, changed: false };
+  }
+
+  const snapshot = aggregate.chart.snapshot_json;
+  if (!snapshot.config || !Array.isArray(snapshot.cells)) {
+    return { aggregate, changed: false };
+  }
+
+  try {
+    const mapped = mapRawZiweiBoard({
+      config: snapshot.config as Record<string, unknown>,
+      element: snapshot.element as string | undefined,
+      destinyMaster: snapshot.destinyMaster as string | undefined,
+      bodyMaster: snapshot.bodyMaster as string | undefined,
+      cells: snapshot.cells,
+      bornStarDerivativeMap: snapshot.bornStarDerivativeMap,
+    });
+    const mappedPalaces = new Map(mapped.palaces.map((palace) => [palace.palace_code, palace]));
+    const palaces = aggregate.palaces.map((palace) => {
+      const corrected = mappedPalaces.get(palace.palace_code);
+      return corrected
+        ? {
+            ...palace,
+            palace_name: corrected.palace_name,
+            earthly_branch: corrected.earthly_branch,
+            heavenly_stem: corrected.heavenly_stem,
+            is_body_palace: corrected.is_body_palace,
+            major_stars_summary: corrected.major_stars_summary,
+            minor_stars_summary: corrected.minor_stars_summary,
+            sha_stars_summary: corrected.sha_stars_summary,
+            palace_snapshot_json: corrected.palace_snapshot_json,
+            display_order: corrected.display_order,
+          }
+        : palace;
+    });
+    const palaceIdByCode = new Map(palaces.map((palace) => [palace.palace_code, palace.id]));
+    const existingStars = groupExistingRecords(aggregate.stars, (star) => `${star.star_category}:${star.star_name}`);
+    const now = dayjs().toISOString();
+    const stars: ChartStarRecord[] = mapped.stars.map((star) => {
+      const existing = existingStars.get(`${star.star_category}:${star.star_name}`)?.shift();
+      return {
+        id: existing?.id ?? uuidv4(),
+        chart_id: aggregate.chart.id,
+        palace_id: palaceIdByCode.get(star.palace_code) ?? "",
+        star_name: star.star_name,
+        star_category: star.star_category,
+        brightness_level: star.brightness_level,
+        transform_type: star.transform_type,
+        is_natal: true,
+        notes: existing?.notes ?? star.notes,
+        created_at: existing?.created_at ?? now,
+        updated_at: now,
+      };
+    });
+    const existingTransforms = groupExistingRecords(
+      aggregate.transforms,
+      (transform) => transform.transform_type,
+    );
+    const transforms: ChartTransformRecord[] = mapped.transforms.map((transform) => {
+      const existing = existingTransforms.get(transform.transform_type)?.shift();
+      return {
+        id: existing?.id ?? uuidv4(),
+        chart_id: aggregate.chart.id,
+        ...transform,
+        created_at: existing?.created_at ?? now,
+        updated_at: now,
+      };
+    });
+
+    return {
+      changed: true,
+      aggregate: {
+        chart: {
+          ...aggregate.chart,
+          chart_system: APP_CHART_SYSTEM,
+          chart_version: APP_CHART_VERSION,
+          life_palace_branch: mapped.life_palace_branch,
+          body_palace_branch: mapped.body_palace_branch,
+          life_master_star: mapped.life_master_star,
+          body_master_star: mapped.body_master_star,
+          five_element_class: mapped.five_element_class,
+          snapshot_json: mapped.snapshot as unknown as Record<string, unknown>,
+        },
+        palaces,
+        stars,
+        transforms,
+      },
+    };
+  } catch (error) {
+    console.error("Failed to upgrade stored chart to Wenmo preset", error);
+    return { aggregate, changed: false };
+  }
+}
+
+function groupExistingRecords<T>(items: T[], getKey: (item: T) => string) {
+  const groups = new Map<string, T[]>();
+  items.forEach((item) => {
+    const key = getKey(item);
+    const current = groups.get(key) ?? [];
+    current.push(item);
+    groups.set(key, current);
+  });
+  return groups;
 }
 
 function mergeBodyPalaceOverlay(palaces: ChartPalaceRecord[]) {

@@ -6,6 +6,7 @@ import {
   repairChartAggregateDisplay,
   repairChartRecordDisplay,
   toZiweiCreateConfigInput,
+  upgradeChartAggregatePreset,
 } from "@/features/charts/lib/ziweiMapper";
 import type { ChartCreateInput } from "@/types";
 
@@ -20,7 +21,15 @@ export class ChartService {
 
   async getChartAggregate(chartId: string) {
     const aggregate = await chartRepository.getChartAggregate(chartId);
-    return aggregate ? repairChartAggregateDisplay(aggregate) : null;
+    if (!aggregate) {
+      return null;
+    }
+
+    const upgraded = upgradeChartAggregatePreset(aggregate);
+    if (upgraded.changed) {
+      await chartRepository.saveAggregate(upgraded.aggregate);
+    }
+    return repairChartAggregateDisplay(upgraded.aggregate);
   }
 
   async listRecentCharts(limit?: number) {

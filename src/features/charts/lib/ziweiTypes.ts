@@ -55,6 +55,7 @@ export interface ZiweiRawCell {
   ageEnd?: number;
   ageRange?: { start?: number; end?: number } | [number, number] | string;
   lifeStage?: { name?: string } | string;
+  starBrightness?: Record<string, string>;
 }
 
 export interface ZiweiRawBoard {
@@ -67,6 +68,7 @@ export interface ZiweiRawBoard {
   toJSON?: () => unknown;
   getRuntimContext?: (input: Record<string, unknown>) => unknown;
   bornStarDerivativeMap?: unknown;
+  chartPreset?: Record<string, unknown>;
 }
 
 export interface ZiweiMappedPalace {
@@ -98,6 +100,7 @@ export interface ZiweiMappedSnapshot {
   bodyMaster: string;
   cells: Record<string, unknown>[];
   bornStarDerivativeMap?: unknown;
+  chartPreset?: Record<string, unknown>;
   runtimeContextPreview?: Record<string, unknown> | null;
 }
 

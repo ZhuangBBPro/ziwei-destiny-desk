@@ -88,6 +88,7 @@ npm run build
 - 接入封装位于 `src/features/charts/lib/ziweiEngine.ts`
 - 输入映射位于 `src/features/charts/lib/timeGroundMapper.ts`
 - 第三方对象转内部统一结构位于 `src/features/charts/lib/ziweiMapper.ts`
+- 文墨截图兼容口径位于 `src/features/charts/lib/wenmoChartPreset.ts`
 - 页面层不直接依赖 `fortel-ziweidoushu`
 - 当前实现按以下策略封装：
   - 阳历使用 `DestinyConfigBuilder.withSolar(...)`
@@ -95,6 +96,20 @@ npm run build
   - 性别映射到库内 `Gender`
   - 时辰通过 `DayTimeGround.getByName(...)` 映射
   - `configType` 默认使用 `ConfigType.SKY`
+
+### 当前排盘口径
+
+核心十二宫与星曜仍由 `fortel-ziweidoushu` 真实排盘，项目不会自行重写紫微斗数主算法。为了和当前采用的文墨天机开关配置保持一致，adapter 会在 plain object 映射阶段执行可追溯校正：
+
+- 天马按年支、天空常规排法、旬空截空正副双星、魁钺六辛逢虎马
+- 星曜亮度采用《紫微斗数全书》通行表
+- 天伤固定交友宫、天使固定疾厄宫
+- 命主按命宫地支，身主仍按生年地支
+- 四化采用通行表，例如壬干为天梁禄、紫微权、左辅科、武曲忌
+- 长生十二神区分阴阳顺逆，并采用水土共长生
+- 晚子时按次日排盘
+
+上述预设会写入命盘快照的 `chartPreset`，旧命盘在首次打开详情时自动升级并回存。流年四化的口径已固定为按流年天干，但流年盘交互界面尚未实现。
 
 注意：
 
@@ -108,6 +123,7 @@ npm run build
 - 新建命盘页表单与真实排盘 adapter 入口
 - IndexedDB 数据层、repository、service 分层
 - 命盘详情页基础信息与十二宫展示
+- 文墨截图口径 adapter、星曜亮度与本命四化拆表
 - 案例主记录创建与编辑
 - 结构化批注新增、编辑、软删除
 - 时间线事件新增与编辑
@@ -132,6 +148,7 @@ npm run build
 - 聊天界面
 - PDF 美化导出
 - 多流派切换 UI
+- 流年、大限、流月、流日、流时交互盘
 - 真太阳时精确换算
 
 ## 后续扩展方向
@@ -141,7 +158,7 @@ npm run build
 - 在当前 `trigger_expression` JSON 结构上扩充更多稳定条件
 - 优先复用 `fortel-ziweidoushu` 的 `BoardCriteria`
 - 对不适合直接表达的规则，继续保持轻量 JSON matcher，而不是引入复杂 DSL
-- 在确认库的四化结构稳定后，将四化结果拆分进 `chart_transforms`
+- 在本命四化拆表基础上扩展流年、大限等运行时四化作用域
 
 ### AI 能力
 

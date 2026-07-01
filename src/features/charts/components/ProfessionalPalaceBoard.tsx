@@ -388,6 +388,7 @@ function PalaceFace({
 }) {
   const ageRange = readAgeRangeFromSnapshot(palace.palace_snapshot_json);
   const lifeStage = readName(palace.palace_snapshot_json.lifeStage);
+  const starBrightness = readStarBrightness(palace.palace_snapshot_json);
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden text-left">
@@ -423,6 +424,7 @@ function PalaceFace({
           stars={palace.major_stars_summary}
           tone="major"
           transforms={transforms}
+          brightness={starBrightness}
           emptyLabel="空宫（无十四主星）"
           showTransforms={showTransforms}
         />
@@ -431,6 +433,7 @@ function PalaceFace({
           stars={palace.minor_stars_summary}
           tone="minor"
           transforms={transforms}
+          brightness={starBrightness}
           emptyLabel="无"
           showTransforms={showTransforms}
         />
@@ -439,6 +442,7 @@ function PalaceFace({
           stars={palace.sha_stars_summary}
           tone="misc"
           transforms={transforms}
+          brightness={starBrightness}
           emptyLabel="无"
           showTransforms={showTransforms}
         />
@@ -458,6 +462,7 @@ function StarLine({
   stars,
   tone,
   transforms,
+  brightness,
   emptyLabel,
   showTransforms,
 }: {
@@ -465,6 +470,7 @@ function StarLine({
   stars: string[];
   tone: "major" | "minor" | "misc";
   transforms: TransformEntry[];
+  brightness: Record<string, string>;
   emptyLabel: string;
   showTransforms: boolean;
 }) {
@@ -489,6 +495,11 @@ function StarLine({
               className={`inline-flex min-w-0 items-center gap-1 break-all ${getStarTextClass(star, tone)}`}
             >
               <span>{star}</span>
+              {brightness[star] ? (
+                <span className="text-[9px] font-normal leading-none text-[#8b7355]">
+                  {brightness[star]}
+                </span>
+              ) : null}
               {showTransforms && derivative ? (
                 <span className="rounded bg-[#d9472f] px-1 py-0.5 text-[10px] leading-none text-white">
                   {derivative}
@@ -910,6 +921,18 @@ function readAgeRangeFromSnapshot(snapshot: Record<string, unknown>) {
   }
 
   return "";
+}
+
+function readStarBrightness(snapshot: Record<string, unknown>) {
+  const value = snapshot.starBrightness;
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {} as Record<string, string>;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter((entry): entry is [string, string] => typeof entry[1] === "string" && Boolean(entry[1])),
+  );
 }
 
 function readAgeStart(snapshot: Record<string, unknown>) {
