@@ -47,7 +47,7 @@ const YEAR_OPTIONS = Array.from({ length: new Date().getFullYear() - 1899 }, (_,
   String(new Date().getFullYear() - index),
 );
 
-const MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0"));
+const MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) => String(index + 1));
 
 export function NewChartPage() {
   const navigate = useNavigate();
@@ -350,7 +350,9 @@ function BirthDateSelector({
 }
 
 function formatBirthDateParts(parts: BirthDateParts) {
-  return parts.year && parts.month && parts.day ? `${parts.year}-${parts.month}-${parts.day}` : "";
+  return parts.year && parts.month && parts.day
+    ? `${parts.year}-${parts.month.padStart(2, "0")}-${parts.day.padStart(2, "0")}`
+    : "";
 }
 
 function clampBirthDateParts(parts: BirthDateParts, calendarType: BirthCalendarType): BirthDateParts {
@@ -365,7 +367,7 @@ function clampBirthDateParts(parts: BirthDateParts, calendarType: BirthCalendarT
 
 function getDayOptions(calendarType: BirthCalendarType, year: string, month: string) {
   const maxDay = getMaxDay(calendarType, year, month);
-  return Array.from({ length: maxDay }, (_, index) => String(index + 1).padStart(2, "0"));
+  return Array.from({ length: maxDay }, (_, index) => String(index + 1));
 }
 
 function getMaxDay(calendarType: BirthCalendarType, year: string, month: string) {
