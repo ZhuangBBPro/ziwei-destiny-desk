@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface TimePickerProps {
   value: string;
@@ -17,8 +17,14 @@ const EMPTY_TIME_PARTS: TimeParts = {
 
 export function TimePicker({ value, onChange }: TimePickerProps) {
   const [parts, setParts] = useState<TimeParts>(() => parseTimeValue(value));
+  const emittedValueRef = useRef<string | null>(null);
 
   useEffect(() => {
+    if (emittedValueRef.current === value) {
+      emittedValueRef.current = null;
+      return;
+    }
+
     setParts(parseTimeValue(value));
   }, [value]);
 
@@ -30,7 +36,9 @@ export function TimePicker({ value, onChange }: TimePickerProps) {
     };
 
     setParts(nextParts);
-    onChange(formatTimeParts(nextParts));
+    const formattedTime = formatTimeParts(nextParts);
+    emittedValueRef.current = formattedTime;
+    onChange(formattedTime);
   }
 
   return (
