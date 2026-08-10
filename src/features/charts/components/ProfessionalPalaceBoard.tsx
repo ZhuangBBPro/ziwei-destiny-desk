@@ -451,10 +451,14 @@ function PalaceFace({
               </span>
             ) : null}
           </div>
-          <p className="mt-1 text-[11px] tracking-[0.18em] text-[#856646]">
-            {palace.heavenly_stem}
-            {palace.earthly_branch}
-          </p>
+          <div className="mt-1 flex flex-wrap gap-1 text-[10px] font-medium">
+            <span className="rounded-md bg-[#eee1cc] px-1.5 py-0.5 text-[#71512e]">
+              宫干 · {palace.heavenly_stem}
+            </span>
+            <span className="rounded-md bg-[#e8efe8] px-1.5 py-0.5 text-[#426656]">
+              宫支 · {palace.earthly_branch}
+            </span>
+          </div>
         </div>
         <div className="text-right text-[10px] leading-4 text-[#7c6243] xl:text-[11px]">
           {ageRange ? <p>{ageRange}</p> : null}
