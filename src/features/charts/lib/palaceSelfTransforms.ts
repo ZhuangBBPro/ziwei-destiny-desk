@@ -37,9 +37,10 @@ export interface PalaceSelfTransformMarker {
   direction: PalaceSelfTransformDirection;
   derivative: PalaceSelfTransformDerivative;
   starName: string;
-  targetPalaceBranch: string;
+  displayPalaceBranch: string;
   sourcePalaceName: string;
   sourcePalaceStem: string;
+  targetPalaceName: string;
 }
 
 export function analyzePalaceSelfTransforms(palaces: ChartPalaceRecord[]) {
@@ -51,7 +52,7 @@ export function analyzePalaceSelfTransforms(palaces: ChartPalaceRecord[]) {
     );
     const markers = [
       ...getTransformMarkers(palace, palace, "centrifugal"),
-      ...(oppositePalace ? getTransformMarkers(palace, oppositePalace, "centripetal") : []),
+      ...(oppositePalace ? getTransformMarkers(oppositePalace, palace, "centripetal") : []),
     ];
 
     markersByPalace.set(palace.palace_code, markers);
@@ -83,9 +84,10 @@ function getTransformMarkers(
           direction,
           derivative,
           starName: matchingStar,
-          targetPalaceBranch: targetPalace.earthly_branch,
+          displayPalaceBranch: sourcePalace.earthly_branch,
           sourcePalaceName: sourcePalace.palace_name,
           sourcePalaceStem: sourcePalace.heavenly_stem,
+          targetPalaceName: targetPalace.palace_name,
         }]
       : [];
   });

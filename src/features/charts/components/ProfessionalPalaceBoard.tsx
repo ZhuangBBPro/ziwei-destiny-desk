@@ -275,10 +275,10 @@ export function ProfessionalPalaceBoard({
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-[#6e5840]">
           <span className="inline-flex flex-wrap items-center gap-1.5 rounded-full border border-[#d8c6a8] bg-[#fbf6ec] px-3 py-1.5 text-[#6e5840]">
-            <span className="font-medium text-[#278253]">禄</span>
-            <span className="font-medium text-[#8747a8]">权</span>
-            <span className="font-medium text-[#2878ae]">科</span>
-            <span className="font-medium text-[#c13c35]">忌</span>
+            <span className="font-medium text-[#477d5e]">禄</span>
+            <span className="font-medium text-[#765480]">权</span>
+            <span className="font-medium text-[#47718c]">科</span>
+            <span className="font-medium text-[#a54f46]">忌</span>
             <span className="border-l border-[#d8c6a8] pl-1.5">向外离心 · 向内向心</span>
           </span>
           <button
@@ -307,6 +307,10 @@ export function ProfessionalPalaceBoard({
             style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}
           >
             <TriangleConnectionLayer lines={showFlyingJi ? flyingJiConflictLines : defaultTriangleLines} />
+            <PalaceSelfTransformLayer
+              palaces={orderedPalaces}
+              markersByPalace={selfTransformsByPalace}
+            />
 
             {orderedPalaces.map((palace, index) => (
               <button
@@ -336,7 +340,6 @@ export function ProfessionalPalaceBoard({
                   flyingJi={showFlyingJi ? flyingJiBySource.get(palace.palace_code) : undefined}
                   isFlyingJiSource={showFlyingJi && flyingJiSourceCodes.has(palace.palace_code)}
                   isFlyingJiTarget={showFlyingJi && flyingJiTargetCodes.has(palace.palace_code)}
-                  selfTransforms={selfTransformsByPalace.get(palace.palace_code) ?? []}
                 />
               </button>
             ))}
@@ -445,7 +448,6 @@ function PalaceFace({
   flyingJi,
   isFlyingJiSource,
   isFlyingJiTarget,
-  selfTransforms,
 }: {
   palace: ChartPalaceRecord;
   selected: boolean;
@@ -455,7 +457,6 @@ function PalaceFace({
   flyingJi?: FlyingJiFlight;
   isFlyingJiSource: boolean;
   isFlyingJiTarget: boolean;
-  selfTransforms: PalaceSelfTransformMarker[];
 }) {
   const ageRange = readAgeRangeFromSnapshot(palace.palace_snapshot_json);
   const lifeStage = readName(palace.palace_snapshot_json.lifeStage);
@@ -512,7 +513,6 @@ function PalaceFace({
           brightness={starBrightness}
           emptyLabel="空宫（无十四主星）"
           showTransforms={showTransforms}
-          selfTransforms={selfTransforms}
         />
         <StarLine
           label="辅"
@@ -522,7 +522,6 @@ function PalaceFace({
           brightness={starBrightness}
           emptyLabel="无"
           showTransforms={showTransforms}
-          selfTransforms={selfTransforms}
         />
         <StarLine
           label="杂"
@@ -532,7 +531,6 @@ function PalaceFace({
           brightness={starBrightness}
           emptyLabel="无"
           showTransforms={showTransforms}
-          selfTransforms={selfTransforms}
         />
       </div>
 
@@ -562,7 +560,6 @@ function StarLine({
   brightness,
   emptyLabel,
   showTransforms,
-  selfTransforms,
 }: {
   label: string;
   stars: string[];
@@ -571,7 +568,6 @@ function StarLine({
   brightness: Record<string, string>;
   emptyLabel: string;
   showTransforms: boolean;
-  selfTransforms: PalaceSelfTransformMarker[];
 }) {
   if (stars.length === 0) {
     return (
@@ -588,7 +584,6 @@ function StarLine({
       <div className="min-w-0 flex flex-wrap gap-x-1.5 gap-y-0.5 break-all">
         {stars.map((star, starIndex) => {
           const derivative = transforms.find((item) => item.starName === star)?.derivative;
-          const selfTransformMarkers = selfTransforms.filter((item) => item.starName === star);
           return (
             <span
               key={`${label}-${star}-${starIndex}`}
@@ -605,12 +600,6 @@ function StarLine({
                   {derivative}
                 </span>
               ) : null}
-              {selfTransformMarkers.map((marker) => (
-                <SelfTransformArrow
-                  key={`${marker.direction}-${marker.derivative}-${marker.sourcePalaceName}`}
-                  marker={marker}
-                />
-              ))}
             </span>
           );
         })}
@@ -619,72 +608,140 @@ function StarLine({
   );
 }
 
-function SelfTransformArrow({ marker }: { marker: PalaceSelfTransformMarker }) {
-  const isCentrifugal = marker.direction === "centrifugal";
-  const derivativeLabel = getSelfTransformDerivativeLabel(marker.derivative);
-  const directionLabel = isCentrifugal ? "离心" : "向心";
-  const rotation = getSelfTransformArrowRotation(marker.targetPalaceBranch, marker.direction);
-  const title = isCentrifugal
-    ? `${marker.sourcePalaceName}宫干${marker.sourcePalaceStem}使本宫${marker.starName}自化${derivativeLabel}`
-    : `对宫${marker.sourcePalaceName}宫干${marker.sourcePalaceStem}使本宫${marker.starName}向心化${derivativeLabel}`;
+function PalaceSelfTransformLayer({
+  palaces,
+  markersByPalace,
+}: {
+  palaces: ChartPalaceRecord[];
+  markersByPalace: Map<string, PalaceSelfTransformMarker[]>;
+}) {
+  const arrows = palaces.flatMap((palace) => {
+    const bounds = getPalaceBounds(palace);
+    const markers = markersByPalace.get(palace.palace_code) ?? [];
+    if (!bounds || markers.length === 0) {
+      return [];
+    }
+
+    return (["centrifugal", "centripetal"] as const).flatMap((direction) => {
+      const directionMarkers = markers.filter((marker) => marker.direction === direction);
+      return directionMarkers.map((marker, index) =>
+        createPalaceSelfTransformArrow(bounds, marker, index, directionMarkers.length),
+      );
+    });
+  });
+
+  if (arrows.length === 0) {
+    return null;
+  }
 
   return (
-    <span
-      title={title}
-      aria-label={`${directionLabel}化${derivativeLabel}`}
-      className={`inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center ${getSelfTransformArrowClass(marker.derivative)}`}
+    <svg
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 z-40 h-full w-full overflow-visible"
+      viewBox="0 0 4 4"
+      preserveAspectRatio="none"
     >
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 18 18"
-        className="h-3.5 w-3.5 overflow-visible drop-shadow-[0_1px_0_rgba(255,255,255,0.7)]"
-        style={{ transform: `rotate(${rotation}deg)` }}
-      >
-        <path d="M2.5 9h12" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
-        <path d="m10.5 4.75 4.25 4.25-4.25 4.25" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-      </svg>
-    </span>
+      {arrows.map((arrow) => {
+        const path = `M ${arrow.start.x} ${arrow.start.y} L ${arrow.end.x} ${arrow.end.y} M ${arrow.headLeft.x} ${arrow.headLeft.y} L ${arrow.end.x} ${arrow.end.y} L ${arrow.headRight.x} ${arrow.headRight.y}`;
+
+        return (
+          <g key={arrow.key} fill="none" strokeLinecap="round" strokeLinejoin="round">
+            <path
+              d={path}
+              stroke="#fff8ed"
+              strokeWidth={4.4}
+              opacity={0.9}
+              vectorEffect="non-scaling-stroke"
+            />
+            <path
+              d={path}
+              stroke={getSelfTransformArrowColor(arrow.derivative)}
+              strokeWidth={1.8}
+              opacity={0.92}
+              vectorEffect="non-scaling-stroke"
+            />
+          </g>
+        );
+      })}
+    </svg>
   );
 }
 
-function getSelfTransformArrowRotation(
-  branch: string,
-  direction: PalaceSelfTransformMarker["direction"],
+function createPalaceSelfTransformArrow(
+  bounds: PalaceBounds,
+  marker: PalaceSelfTransformMarker,
+  index: number,
+  total: number,
 ) {
-  const outwardRotations: Record<string, number> = {
-    巳: -135,
-    午: -90,
-    未: -90,
-    申: -45,
-    辰: 180,
-    酉: 0,
-    卯: 180,
-    戌: 0,
-    寅: 135,
-    丑: 90,
-    子: 90,
-    亥: 45,
+  const towardCenter = normalizeVector({
+    x: BOARD_CENTER.x - bounds.centerX,
+    y: BOARD_CENTER.y - bounds.centerY,
+  });
+  const direction = marker.direction === "centripetal"
+    ? towardCenter
+    : { x: -towardCenter.x, y: -towardCenter.y };
+  const anchor = marker.direction === "centripetal"
+    ? getInnerAnchorPoint(bounds)
+    : getOuterAnchorPoint(bounds);
+  const perpendicular = { x: -direction.y, y: direction.x };
+  const offset = (index - (total - 1) / 2) * 0.052;
+  const start = {
+    x: anchor.x + perpendicular.x * offset - direction.x * 0.016,
+    y: anchor.y + perpendicular.y * offset - direction.y * 0.016,
   };
-  const outwardRotation = outwardRotations[branch] ?? 0;
+  const end = {
+    x: start.x + direction.x * 0.145,
+    y: start.y + direction.y * 0.145,
+  };
+  const headBase = {
+    x: end.x - direction.x * 0.045,
+    y: end.y - direction.y * 0.045,
+  };
 
-  return direction === "centrifugal" ? outwardRotation : outwardRotation + 180;
+  return {
+    key: `${marker.sourcePalaceName}-${marker.direction}-${marker.derivative}-${marker.starName}`,
+    derivative: marker.derivative,
+    start,
+    end,
+    headLeft: {
+      x: headBase.x + perpendicular.x * 0.021,
+      y: headBase.y + perpendicular.y * 0.021,
+    },
+    headRight: {
+      x: headBase.x - perpendicular.x * 0.021,
+      y: headBase.y - perpendicular.y * 0.021,
+    },
+  };
 }
 
-function getSelfTransformDerivativeLabel(derivative: PalaceSelfTransformDerivative) {
-  return derivative === "祿" ? "禄" : derivative === "權" ? "权" : derivative;
+function normalizeVector(vector: { x: number; y: number }) {
+  const length = Math.hypot(vector.x, vector.y) || 1;
+  return { x: vector.x / length, y: vector.y / length };
 }
 
-function getSelfTransformArrowClass(derivative: PalaceSelfTransformDerivative) {
+function getOuterAnchorPoint(bounds: PalaceBounds) {
+  const isLeftEdge = bounds.left === 0;
+  const isRightEdge = bounds.right === 4;
+  const isTopEdge = bounds.top === 0;
+  const isBottomEdge = bounds.bottom === 4;
+
+  return {
+    x: isLeftEdge ? bounds.left : isRightEdge ? bounds.right : bounds.centerX,
+    y: isTopEdge ? bounds.top : isBottomEdge ? bounds.bottom : bounds.centerY,
+  };
+}
+
+function getSelfTransformArrowColor(derivative: PalaceSelfTransformDerivative) {
   if (derivative === "祿") {
-    return "text-[#278253]";
+    return "#477d5e";
   }
   if (derivative === "權") {
-    return "text-[#8747a8]";
+    return "#765480";
   }
   if (derivative === "科") {
-    return "text-[#2878ae]";
+    return "#47718c";
   }
-  return "text-[#c13c35]";
+  return "#a54f46";
 }
 
 function TriangleConnectionLayer({ lines }: { lines: ConnectionLine[] }) {
