@@ -274,8 +274,12 @@ export function ProfessionalPalaceBoard({
           <h2 className="mt-1 font-serif text-2xl text-[#3a2413]">本命盘</h2>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-[#6e5840]">
-          <span className="rounded-full border border-[#d8c6a8] bg-[#fbf6ec] px-3 py-1.5 text-[#6e5840]">
-            离心箭头向外 · 向心箭头向内
+          <span className="inline-flex flex-wrap items-center gap-1.5 rounded-full border border-[#d8c6a8] bg-[#fbf6ec] px-3 py-1.5 text-[#6e5840]">
+            <span className="font-medium text-[#278253]">禄</span>
+            <span className="font-medium text-[#8747a8]">权</span>
+            <span className="font-medium text-[#2878ae]">科</span>
+            <span className="font-medium text-[#c13c35]">忌</span>
+            <span className="border-l border-[#d8c6a8] pl-1.5">向外离心 · 向内向心</span>
           </span>
           <button
             type="button"
@@ -619,7 +623,7 @@ function SelfTransformArrow({ marker }: { marker: PalaceSelfTransformMarker }) {
   const isCentrifugal = marker.direction === "centrifugal";
   const derivativeLabel = getSelfTransformDerivativeLabel(marker.derivative);
   const directionLabel = isCentrifugal ? "离心" : "向心";
-  const arrow = getSelfTransformArrow(marker.targetPalaceBranch, marker.direction);
+  const rotation = getSelfTransformArrowRotation(marker.targetPalaceBranch, marker.direction);
   const title = isCentrifugal
     ? `${marker.sourcePalaceName}宫干${marker.sourcePalaceStem}使本宫${marker.starName}自化${derivativeLabel}`
     : `对宫${marker.sourcePalaceName}宫干${marker.sourcePalaceStem}使本宫${marker.starName}向心化${derivativeLabel}`;
@@ -628,47 +632,42 @@ function SelfTransformArrow({ marker }: { marker: PalaceSelfTransformMarker }) {
     <span
       title={title}
       aria-label={`${directionLabel}化${derivativeLabel}`}
-      className={`inline-flex items-center rounded px-1 py-0.5 text-[9px] font-semibold leading-none ${getSelfTransformArrowClass(marker.derivative)}`}
+      className={`inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center ${getSelfTransformArrowClass(marker.derivative)}`}
     >
-      {isCentrifugal ? `${derivativeLabel}${arrow}` : `${arrow}${derivativeLabel}`}
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 18 18"
+        className="h-3.5 w-3.5 overflow-visible drop-shadow-[0_1px_0_rgba(255,255,255,0.7)]"
+        style={{ transform: `rotate(${rotation}deg)` }}
+      >
+        <path d="M2.5 9h12" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+        <path d="m10.5 4.75 4.25 4.25-4.25 4.25" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+      </svg>
     </span>
   );
 }
 
-function getSelfTransformArrow(
+function getSelfTransformArrowRotation(
   branch: string,
   direction: PalaceSelfTransformMarker["direction"],
 ) {
-  const outwardArrows: Record<string, string> = {
-    巳: "↖",
-    午: "↑",
-    未: "↑",
-    申: "↗",
-    辰: "←",
-    酉: "→",
-    卯: "←",
-    戌: "→",
-    寅: "↙",
-    丑: "↓",
-    子: "↓",
-    亥: "↘",
+  const outwardRotations: Record<string, number> = {
+    巳: -135,
+    午: -90,
+    未: -90,
+    申: -45,
+    辰: 180,
+    酉: 0,
+    卯: 180,
+    戌: 0,
+    寅: 135,
+    丑: 90,
+    子: 90,
+    亥: 45,
   };
-  const inwardArrows: Record<string, string> = {
-    巳: "↘",
-    午: "↓",
-    未: "↓",
-    申: "↙",
-    辰: "→",
-    酉: "←",
-    卯: "→",
-    戌: "←",
-    寅: "↗",
-    丑: "↑",
-    子: "↑",
-    亥: "↖",
-  };
+  const outwardRotation = outwardRotations[branch] ?? 0;
 
-  return direction === "centrifugal" ? outwardArrows[branch] ?? "→" : inwardArrows[branch] ?? "←";
+  return direction === "centrifugal" ? outwardRotation : outwardRotation + 180;
 }
 
 function getSelfTransformDerivativeLabel(derivative: PalaceSelfTransformDerivative) {
@@ -677,15 +676,15 @@ function getSelfTransformDerivativeLabel(derivative: PalaceSelfTransformDerivati
 
 function getSelfTransformArrowClass(derivative: PalaceSelfTransformDerivative) {
   if (derivative === "祿") {
-    return "bg-emerald-100 text-emerald-800";
+    return "text-[#278253]";
   }
   if (derivative === "權") {
-    return "bg-violet-100 text-violet-800";
+    return "text-[#8747a8]";
   }
   if (derivative === "科") {
-    return "bg-sky-100 text-sky-800";
+    return "text-[#2878ae]";
   }
-  return "bg-rose-100 text-rose-800";
+  return "text-[#c13c35]";
 }
 
 function TriangleConnectionLayer({ lines }: { lines: ConnectionLine[] }) {
