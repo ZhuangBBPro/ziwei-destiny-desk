@@ -35,15 +35,17 @@ export interface FlyingJiFlight {
   jiStarName: string;
 }
 
-export interface FlyingJiConflict {
+export interface FlyingJiConflictAxis {
   id: string;
-  first: FlyingJiFlight;
-  second: FlyingJiFlight;
+  firstTargetPalace: ChartPalaceRecord;
+  secondTargetPalace: ChartPalaceRecord;
+  firstFlights: FlyingJiFlight[];
+  secondFlights: FlyingJiFlight[];
 }
 
 export interface FlyingJiAnalysis {
   flights: FlyingJiFlight[];
-  conflicts: FlyingJiConflict[];
+  conflictAxes: FlyingJiConflictAxis[];
 }
 
 export function analyzeFlyingJi(palaces: ChartPalaceRecord[]): FlyingJiAnalysis {
@@ -61,27 +63,41 @@ export function analyzeFlyingJi(palaces: ChartPalaceRecord[]): FlyingJiAnalysis 
     return [{ sourcePalace, targetPalace, jiStarName }];
   });
 
-  const conflicts: FlyingJiConflict[] = [];
-
-  flights.forEach((first, firstIndex) => {
-    flights.slice(firstIndex + 1).forEach((second) => {
-      if (!first.targetPalace || !second.targetPalace) {
-        return;
-      }
-
-      if (OPPOSITE_BRANCH[first.targetPalace.earthly_branch] !== second.targetPalace.earthly_branch) {
-        return;
-      }
-
-      conflicts.push({
-        id: [first.sourcePalace.palace_code, second.sourcePalace.palace_code].sort().join("--"),
-        first,
-        second,
-      });
-    });
+  const flightsByTarget = new Map<string, FlyingJiFlight[]>();
+  flights.forEach((flight) => {
+    if (!flight.targetPalace) {
+      return;
+    }
+    const current = flightsByTarget.get(flight.targetPalace.palace_code) ?? [];
+    current.push(flight);
+    flightsByTarget.set(flight.targetPalace.palace_code, current);
   });
 
-  return { flights, conflicts };
+  const seenAxes = new Set<string>();
+  const conflictAxes = palaces.flatMap((firstTargetPalace) => {
+    const secondTargetPalace = palaces.find(
+      (palace) => palace.earthly_branch === OPPOSITE_BRANCH[firstTargetPalace.earthly_branch],
+    );
+    if (!secondTargetPalace) {
+      return [];
+    }
+
+    const id = [firstTargetPalace.palace_code, secondTargetPalace.palace_code].sort().join("--");
+    if (seenAxes.has(id)) {
+      return [];
+    }
+    seenAxes.add(id);
+
+    const firstFlights = flightsByTarget.get(firstTargetPalace.palace_code) ?? [];
+    const secondFlights = flightsByTarget.get(secondTargetPalace.palace_code) ?? [];
+    if (firstFlights.length === 0 || secondFlights.length === 0) {
+      return [];
+    }
+
+    return [{ id, firstTargetPalace, secondTargetPalace, firstFlights, secondFlights }];
+  });
+
+  return { flights, conflictAxes };
 }
 
 function getPalaceStars(palace: ChartPalaceRecord) {
