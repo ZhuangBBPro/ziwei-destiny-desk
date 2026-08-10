@@ -7,6 +7,12 @@ import type {
   PalaceInterpretationHit,
 } from "@/types";
 import { getBirthCalendarLabel } from "@/features/charts/lib/birthDisplay";
+import {
+  analyzeFlyingJi,
+  type FlyingJiAnalysis,
+  type FlyingJiConflict,
+  type FlyingJiFlight,
+} from "@/features/charts/lib/flyingJi";
 import { palaceInterpretationService } from "@/features/charts/services/palaceInterpretationService";
 
 interface ProfessionalPalaceBoardProps {
@@ -86,7 +92,7 @@ interface ConnectionLine {
     x: number;
     y: number;
   };
-  tone: "opposite" | "triangle";
+  tone: "opposite" | "triangle" | "ji-conflict";
 }
 
 interface PalaceBounds {
@@ -127,6 +133,14 @@ export function ProfessionalPalaceBoard({
   const transformEntries = readTransformEntries(chart.snapshot_json);
   const highlightedPalaces = getHighlightedPalaces(orderedPalaces, selectedPalace?.palace_code, transformEntries);
   const defaultTriangleLines = getDefaultTriangleLines(orderedPalaces, selectedPalace?.palace_code);
+  const flyingJiAnalysis = analyzeFlyingJi(orderedPalaces);
+  const [showFlyingJi, setShowFlyingJi] = useState(true);
+  const flyingJiBySource = new Map(
+    flyingJiAnalysis.flights.map((flight) => [flight.sourcePalace.palace_code, flight]),
+  );
+  const flyingJiSourceLabels = getFlyingJiConflictLabels(flyingJiAnalysis.conflicts, "source");
+  const flyingJiTargetLabels = getFlyingJiConflictLabels(flyingJiAnalysis.conflicts, "target");
+  const flyingJiConflictLines = getFlyingJiConflictLines(flyingJiAnalysis.conflicts);
   const [interpretationPopover, setInterpretationPopover] = useState<InterpretationPopoverState | null>(null);
   const lastTouchTapRef = useRef<{ palaceCode: string; time: number; x: number; y: number } | null>(null);
   const activeInterpretationPalace = interpretationPopover
@@ -243,7 +257,19 @@ export function ProfessionalPalaceBoard({
           <p className="text-xs uppercase tracking-[0.3em] text-[#8b6b3c]">Professional Board</p>
           <h2 className="mt-1 font-serif text-2xl text-[#3a2413]">本命盘</h2>
         </div>
-        <div className="flex flex-wrap gap-2 text-xs text-[#6e5840]">
+        <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-[#6e5840]">
+          <button
+            type="button"
+            aria-pressed={showFlyingJi}
+            onClick={() => setShowFlyingJi((current) => !current)}
+            className={`rounded-full border px-3 py-1.5 font-medium transition ${
+              showFlyingJi
+                ? "border-[#a12f2f] bg-[#8f2727] text-white shadow-[0_5px_18px_rgba(126,44,44,0.2)]"
+                : "border-[#d8c6a8] bg-[#fbf6ec] text-[#6e5840] hover:border-[#a12f2f] hover:text-[#8f2727]"
+            }`}
+          >
+            飞宫派 · 飞忌 {showFlyingJi ? "已显示" : "已隐藏"}
+          </button>
           <BoardBadge label={`命宫 ${chart.life_palace_branch || "-"}`} />
           <BoardBadge label={`身宫 ${chart.body_palace_branch || "-"}`} />
           <BoardBadge label={`命主 ${chart.life_master_star || "-"}`} />
@@ -257,7 +283,7 @@ export function ProfessionalPalaceBoard({
             className="relative grid aspect-square w-full grid-cols-4 grid-rows-4 gap-1.5 md:gap-2 xl:gap-3"
             style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}
           >
-            <TriangleConnectionLayer lines={defaultTriangleLines} />
+            <TriangleConnectionLayer lines={showFlyingJi ? flyingJiConflictLines : defaultTriangleLines} />
 
             {orderedPalaces.map((palace, index) => (
               <button
@@ -274,6 +300,8 @@ export function ProfessionalPalaceBoard({
                 className={buildPalaceCardClass({
                   isSelected: palace.palace_code === selectedPalace?.palace_code,
                   isHighlighted: highlightedPalaces.has(palace.palace_code),
+                  isFlyingJiSource: showFlyingJi && flyingJiSourceLabels.has(palace.palace_code),
+                  isFlyingJiTarget: showFlyingJi && flyingJiTargetLabels.has(palace.palace_code),
                 })}
               >
                 <PalaceFace
@@ -282,6 +310,9 @@ export function ProfessionalPalaceBoard({
                   transforms={findPalaceTransforms(palace, transformEntries)}
                   showTransforms
                   relationLabel={highlightedPalaces.get(palace.palace_code)}
+                  flyingJi={showFlyingJi ? flyingJiBySource.get(palace.palace_code) : undefined}
+                  flyingJiSourceLabels={showFlyingJi ? flyingJiSourceLabels.get(palace.palace_code) : undefined}
+                  flyingJiTargetLabels={showFlyingJi ? flyingJiTargetLabels.get(palace.palace_code) : undefined}
                 />
               </button>
             ))}
@@ -356,6 +387,8 @@ export function ProfessionalPalaceBoard({
             </div>
           </div>
 
+          {showFlyingJi ? <FlyingJiPanel analysis={flyingJiAnalysis} /> : null}
+
           <DecadeStrip palaces={orderedPalaces} selectedPalaceCode={selectedPalace?.palace_code ?? ""} />
         </div>
       </div>
@@ -379,12 +412,18 @@ function PalaceFace({
   transforms,
   showTransforms,
   relationLabel,
+  flyingJi,
+  flyingJiSourceLabels,
+  flyingJiTargetLabels,
 }: {
   palace: ChartPalaceRecord;
   selected: boolean;
   transforms: TransformEntry[];
   showTransforms: boolean;
   relationLabel?: string;
+  flyingJi?: FlyingJiFlight;
+  flyingJiSourceLabels?: number[];
+  flyingJiTargetLabels?: number[];
 }) {
   const ageRange = readAgeRangeFromSnapshot(palace.palace_snapshot_json);
   const lifeStage = readName(palace.palace_snapshot_json.lifeStage);
@@ -404,6 +443,11 @@ function PalaceFace({
             {relationLabel ? (
               <span className="rounded-md bg-[#2f7b66]/10 px-1.5 py-0.5 text-[10px] text-[#2f7b66]">
                 {relationLabel}
+              </span>
+            ) : null}
+            {flyingJiTargetLabels?.length ? (
+              <span className="rounded-md bg-[#8f2727] px-1.5 py-0.5 text-[9px] font-medium text-white">
+                忌冲落宫 {formatConflictNumbers(flyingJiTargetLabels)}
               </span>
             ) : null}
           </div>
@@ -448,7 +492,27 @@ function PalaceFace({
         />
       </div>
 
-      {selected ? (
+      {flyingJi ? (
+        <div
+          className={`mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 border-t pt-1.5 text-[9px] leading-4 xl:text-[10px] ${
+            flyingJiSourceLabels?.length
+              ? "border-[#c98578] text-[#8f2727]"
+              : "border-[#e0d2bc] text-[#765c3d]"
+          }`}
+        >
+          <span className="font-medium">飞忌</span>
+          <span>
+            {flyingJi.jiStarName} → {flyingJi.targetPalace?.palace_name ?? "未定位"}
+          </span>
+          {flyingJiSourceLabels?.length ? (
+            <span className="rounded bg-[#8f2727] px-1 py-0.5 font-medium leading-none text-white">
+              互冲源 {formatConflictNumbers(flyingJiSourceLabels)}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
+      {selected && !flyingJi ? (
         <div className="mt-1.5 border-t border-[#dccdb7] pt-1.5 text-[9px] text-[#6c5336] xl:text-[10px]">
           点击右侧可直接记录该宫位批注与验证事件
         </div>
@@ -487,11 +551,11 @@ function StarLine({
     <div className="flex min-w-0 gap-1.5">
       <span className="min-w-4 shrink-0 text-[10px] uppercase tracking-[0.14em] text-[#b28d61]">{label}</span>
       <div className="min-w-0 flex flex-wrap gap-x-1.5 gap-y-0.5 break-all">
-        {stars.map((star) => {
+        {stars.map((star, starIndex) => {
           const derivative = transforms.find((item) => item.starName === star)?.derivative;
           return (
             <span
-              key={`${label}-${star}`}
+              key={`${label}-${star}-${starIndex}`}
               className={`inline-flex min-w-0 items-center gap-1 break-all ${getStarTextClass(star, tone)}`}
             >
               <span>{star}</span>
@@ -526,19 +590,26 @@ function TriangleConnectionLayer({ lines }: { lines: ConnectionLine[] }) {
       preserveAspectRatio="none"
     >
       {lines.map((line, index) => (
-        <line
-          key={`${line.tone}-${index}`}
-          x1={line.from.x}
-          y1={line.from.y}
-          x2={line.to.x}
-          y2={line.to.y}
-          stroke={line.tone === "opposite" ? "#7e2c2c" : "#2f7b66"}
-          strokeWidth={line.tone === "opposite" ? 2 : 1.8}
-          strokeDasharray={line.tone === "opposite" ? "8 6" : "7 6"}
-          strokeLinecap="round"
-          opacity={line.tone === "opposite" ? 0.82 : 0.72}
-          vectorEffect="non-scaling-stroke"
-        />
+        <g key={`${line.tone}-${index}`}>
+          <line
+            x1={line.from.x}
+            y1={line.from.y}
+            x2={line.to.x}
+            y2={line.to.y}
+            stroke={getConnectionLineColor(line.tone)}
+            strokeWidth={line.tone === "ji-conflict" ? 3.4 : line.tone === "opposite" ? 2 : 1.8}
+            strokeDasharray={line.tone === "ji-conflict" ? "5 4" : line.tone === "opposite" ? "8 6" : "7 6"}
+            strokeLinecap="round"
+            opacity={line.tone === "ji-conflict" ? 0.92 : line.tone === "opposite" ? 0.82 : 0.72}
+            vectorEffect="non-scaling-stroke"
+          />
+          {line.tone === "ji-conflict" ? (
+            <>
+              <circle cx={line.from.x} cy={line.from.y} r={0.045} fill="#8f2727" vectorEffect="non-scaling-stroke" />
+              <circle cx={line.to.x} cy={line.to.y} r={0.045} fill="#8f2727" vectorEffect="non-scaling-stroke" />
+            </>
+          ) : null}
+        </g>
       ))}
       {lines[0] ? (
         <circle
@@ -551,6 +622,173 @@ function TriangleConnectionLayer({ lines }: { lines: ConnectionLine[] }) {
         />
       ) : null}
     </svg>
+  );
+}
+
+function getConnectionLineColor(tone: ConnectionLine["tone"]) {
+  if (tone === "ji-conflict") {
+    return "#8f2727";
+  }
+  return tone === "opposite" ? "#7e2c2c" : "#2f7b66";
+}
+
+function formatConflictNumbers(numbers: number[]) {
+  return numbers.map((number) => `#${number}`).join(" · ");
+}
+
+function getFlyingJiConflictLabels(
+  conflicts: FlyingJiConflict[],
+  scope: "source" | "target",
+) {
+  const labels = new Map<string, number[]>();
+
+  conflicts.forEach((conflict, index) => {
+    const palaceCodes = scope === "source"
+      ? [conflict.first.sourcePalace.palace_code, conflict.second.sourcePalace.palace_code]
+      : [conflict.first.targetPalace?.palace_code, conflict.second.targetPalace?.palace_code];
+
+    palaceCodes.forEach((palaceCode) => {
+      if (!palaceCode) {
+        return;
+      }
+      const numbers = labels.get(palaceCode) ?? [];
+      numbers.push(index + 1);
+      labels.set(palaceCode, numbers);
+    });
+  });
+
+  return labels;
+}
+
+function getFlyingJiConflictLines(conflicts: FlyingJiConflict[]): ConnectionLine[] {
+  const seenTargetAxes = new Set<string>();
+
+  return conflicts.flatMap((conflict) => {
+    const firstTarget = conflict.first.targetPalace;
+    const secondTarget = conflict.second.targetPalace;
+    if (!firstTarget || !secondTarget) {
+      return [];
+    }
+
+    const targetAxisKey = [firstTarget.palace_code, secondTarget.palace_code].sort().join("--");
+    if (seenTargetAxes.has(targetAxisKey)) {
+      return [];
+    }
+    seenTargetAxes.add(targetAxisKey);
+
+    const firstBounds = getPalaceBounds(firstTarget);
+    const secondBounds = getPalaceBounds(secondTarget);
+    const points = firstBounds && secondBounds ? getCornerConnectionPoints(firstBounds, secondBounds) : null;
+
+    return points
+      ? [{ from: points.from, to: points.to, tone: "ji-conflict" as const }]
+      : [];
+  });
+}
+
+function FlyingJiPanel({ analysis }: { analysis: FlyingJiAnalysis }) {
+  const unresolvedFlights = analysis.flights.filter((flight) => !flight.targetPalace);
+
+  return (
+    <section className="mt-4 overflow-hidden rounded-[1.5rem] border border-[#cfae96] bg-[#fff8ef]">
+      <div className="flex flex-col gap-2 border-b border-[#e0cbbb] bg-[linear-gradient(135deg,#f8e8dc_0%,#f3dfcf_100%)] px-4 py-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.28em] text-[#9a6752]">Flying Ji · Palace Stem</p>
+          <h3 className="mt-1 font-serif text-lg text-[#552218]">飞宫派飞忌</h3>
+        </div>
+        <div className="flex flex-wrap gap-2 text-[11px]">
+          <span className="rounded-full border border-[#d5b29f] bg-white/70 px-3 py-1 text-[#714537]">
+            已排 {analysis.flights.length} 条飞忌
+          </span>
+          <span className="rounded-full bg-[#8f2727] px-3 py-1 font-medium text-white">
+            发现 {analysis.conflicts.length} 组互冲
+          </span>
+        </div>
+      </div>
+
+      <div className="space-y-4 p-4">
+        <div>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-medium text-[#6f3024]">互冲源宫</p>
+            <p className="text-[10px] text-[#8a6958]">编号同时标在盘面源宫与落宫</p>
+          </div>
+          {analysis.conflicts.length > 0 ? (
+            <div className="mt-2 grid gap-2 lg:grid-cols-2">
+              {analysis.conflicts.map((conflict, index) => (
+                <FlyingJiConflictCard key={`${conflict.id}-${index}`} conflict={conflict} index={index} />
+              ))}
+            </div>
+          ) : (
+            <div className="mt-2 rounded-2xl border border-dashed border-[#d8bea9] bg-white/60 px-4 py-3 text-sm text-[#755846]">
+              本盘未发现两条飞忌分别落入对宫的组合。
+            </div>
+          )}
+        </div>
+
+        <div>
+          <p className="text-xs font-medium text-[#6f3024]">十二宫飞忌路径</p>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {analysis.flights.map((flight) => (
+              <div
+                key={flight.sourcePalace.palace_code}
+                className="flex items-center justify-between gap-2 rounded-xl border border-[#e1cdbd] bg-white/70 px-3 py-2 text-[11px]"
+              >
+                <span className="font-medium text-[#513326]">
+                  {flight.sourcePalace.palace_name} · {flight.sourcePalace.heavenly_stem}
+                </span>
+                <span className="text-right text-[#765846]">
+                  {flight.jiStarName}忌 → {flight.targetPalace?.palace_name ?? "未定位"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {unresolvedFlights.length > 0 ? (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            有 {unresolvedFlights.length} 条飞忌未找到对应星曜落宫，请核对该命盘的星曜快照。
+          </p>
+        ) : null}
+
+        <p className="text-[10px] leading-5 text-[#876957]">
+          判定口径：起飞宫以本宫天干取化忌星；两条飞忌的落宫互为对宫时，标为“飞忌互冲（纠缠忌）”。
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function FlyingJiConflictCard({ conflict, index }: { conflict: FlyingJiConflict; index: number }) {
+  return (
+    <article className="rounded-2xl border border-[#c98d7b] bg-white/80 p-3 shadow-[0_5px_18px_rgba(93,38,25,0.08)]">
+      <div className="flex items-center gap-2">
+        <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-[#8f2727] px-1.5 text-[11px] font-semibold text-white">
+          {index + 1}
+        </span>
+        <p className="text-xs font-medium text-[#7b2b20]">飞忌互冲 · 纠缠忌</p>
+      </div>
+      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-[11px] leading-5">
+        <FlyingJiConflictSide flight={conflict.first} />
+        <span className="rounded-full bg-[#f2dfd7] px-2 py-1 font-medium text-[#8f2727]">互冲</span>
+        <FlyingJiConflictSide flight={conflict.second} align="right" />
+      </div>
+      <p className="mt-2 border-t border-[#ead8cd] pt-2 text-center text-[10px] text-[#886757]">
+        落宫对冲：{conflict.first.targetPalace?.palace_name} ↔ {conflict.second.targetPalace?.palace_name}
+      </p>
+    </article>
+  );
+}
+
+function FlyingJiConflictSide({ flight, align = "left" }: { flight: FlyingJiFlight; align?: "left" | "right" }) {
+  return (
+    <div className={align === "right" ? "text-right" : "text-left"}>
+      <p className="font-medium text-[#4d2f24]">
+        {flight.sourcePalace.palace_name} · {flight.sourcePalace.heavenly_stem}
+      </p>
+      <p className="text-[#7a5444]">
+        {flight.jiStarName}忌 → {flight.targetPalace?.palace_name ?? "未定位"}
+      </p>
+    </div>
   );
 }
 
@@ -847,11 +1085,23 @@ function BoardBadge({ label }: { label: string }) {
 function buildPalaceCardClass({
   isSelected,
   isHighlighted,
+  isFlyingJiSource,
+  isFlyingJiTarget,
 }: {
   isSelected: boolean;
   isHighlighted: boolean;
+  isFlyingJiSource: boolean;
+  isFlyingJiTarget: boolean;
 }) {
   const baseClass = "touch-manipulation select-none overflow-hidden rounded-[1.35rem] p-2 transition md:p-2.5 xl:p-3";
+
+  if (isFlyingJiTarget) {
+    return `${baseClass} border-2 border-[#9d3028] bg-[#fff1eb] shadow-[0_8px_28px_rgba(143,39,39,0.2)]`;
+  }
+
+  if (isFlyingJiSource) {
+    return `${baseClass} border border-[#bd7765] bg-[#fff8f1] shadow-[0_6px_22px_rgba(126,44,44,0.11)]`;
+  }
 
   if (isSelected) {
     return `${baseClass} border border-[#7e2c2c] bg-[#fff7f3] shadow-[0_8px_28px_rgba(126,44,44,0.16)]`;
