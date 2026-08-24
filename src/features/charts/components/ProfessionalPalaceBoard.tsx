@@ -267,8 +267,8 @@ export function ProfessionalPalaceBoard({
   }, [interpretationPopover]);
 
   return (
-    <div className="grid items-start gap-5 2xl:grid-cols-[minmax(0,1fr)_360px]">
-      <div className="overflow-hidden rounded-[2rem] border border-[#d4c4a8] bg-[#efe5d3] p-3 shadow-panel md:p-5 2xl:p-3.5">
+    <div className="grid items-stretch gap-5 2xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="h-full overflow-hidden rounded-[2rem] border border-[#d4c4a8] bg-[#efe5d3] p-3 shadow-panel md:p-5 2xl:p-3.5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3 2xl:mb-2">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-[#8b6b3c]">Professional Board</p>
@@ -420,23 +420,25 @@ export function ProfessionalPalaceBoard({
       </div>
       </div>
 
-      <aside className="min-w-0 2xl:sticky 2xl:top-4 2xl:max-h-[calc(100vh-13rem)] 2xl:overflow-y-auto 2xl:overscroll-contain">
-        {showFlyingJi ? (
-          <FlyingJiPanel
-            analysis={flyingJiAnalysis}
-            activeAxisId={activeFlyingJiAxis?.id ?? ""}
-            onSelectAxis={setSelectedFlyingJiAxisId}
-            compact
-          />
-        ) : (
-          <section className="rounded-[1.8rem] border border-[#d7b9a7] bg-[#fff8ef] p-5 shadow-panel">
-            <p className="text-xs uppercase tracking-[0.28em] text-[#9a6752]">Flying Ji · Check</p>
-            <h3 className="mt-2 font-serif text-xl text-[#552218]">飞宫忌冲核对</h3>
-            <p className="mt-3 text-sm leading-6 text-[#7d6252]">
-              点击命盘上方的“飞忌分析”，即可在这里同步核对飞忌落宫与对冲关系。
-            </p>
-          </section>
-        )}
+      <aside className="min-w-0 2xl:relative">
+        <div className="h-full 2xl:absolute 2xl:inset-0">
+          {showFlyingJi ? (
+            <FlyingJiPanel
+              analysis={flyingJiAnalysis}
+              activeAxisId={activeFlyingJiAxis?.id ?? ""}
+              onSelectAxis={setSelectedFlyingJiAxisId}
+              compact
+            />
+          ) : (
+            <section className="h-full rounded-[1.8rem] border border-[#d7b9a7] bg-[#fff8ef] p-5 shadow-panel">
+              <p className="text-xs uppercase tracking-[0.28em] text-[#9a6752]">Flying Ji · Check</p>
+              <h3 className="mt-2 font-serif text-xl text-[#552218]">飞宫忌冲核对</h3>
+              <p className="mt-3 text-sm leading-6 text-[#7d6252]">
+                点击命盘上方的“飞忌分析”，即可在这里同步核对飞忌落宫与对冲关系。
+              </p>
+            </section>
+          )}
+        </div>
       </aside>
 
       {interpretationPopover && activeInterpretationPalace ? (
@@ -517,7 +519,9 @@ function PalaceFace({
         </div>
       </div>
 
-      <div className="mt-2 flex-1 min-h-0 space-y-1 text-[11px] leading-4 md:text-[12px] md:leading-[1.15rem] xl:mt-2 xl:space-y-1.5 xl:text-[13px]">
+      <div className={`mt-2 min-h-0 flex-1 overflow-hidden text-[11px] leading-4 md:text-[12px] md:leading-[1.15rem] xl:mt-2 xl:text-[13px] ${
+        flyingJi ? "space-y-0.5 xl:space-y-1" : "space-y-1 xl:space-y-1.5"
+      }`}>
         <StarLine
           label="主"
           stars={palace.major_stars_summary}
@@ -548,17 +552,17 @@ function PalaceFace({
       </div>
 
       {flyingJi ? (
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 border-t border-[#d6a660] pt-1.5 text-[9px] leading-4 text-[#81521a] xl:text-[10px]">
-          <span className="font-medium">宫干 {flyingJi.sourcePalace.heavenly_stem}</span>
-          <span>
+        <div className="mt-1 flex shrink-0 flex-nowrap items-center gap-x-1.5 border-t border-[#d6a660] pt-1 text-[9px] leading-3 text-[#81521a] xl:text-[10px]">
+          <span className="shrink-0 font-medium">宫干 {flyingJi.sourcePalace.heavenly_stem}</span>
+          <span className="min-w-0 truncate">
             飞 {flyingJi.jiStarName}忌 → {flyingJi.targetPalace?.palace_name ?? "未定位"}
           </span>
         </div>
       ) : null}
 
       {selected && !flyingJi ? (
-        <div className="mt-1.5 border-t border-[#dccdb7] pt-1.5 text-[9px] text-[#6c5336] xl:text-[10px]">
-          点击右侧可直接记录该宫位批注与验证事件
+        <div className="mt-1.5 shrink-0 border-t border-[#dccdb7] pt-1.5 text-[9px] text-[#6c5336] xl:text-[10px]">
+          已联动下方批注与验证记录
         </div>
       ) : null}
     </div>
@@ -692,19 +696,28 @@ function createPalaceSelfTransformArrow(
   });
   const direction = marker.direction === "centripetal"
     ? towardCenter
-    : { x: -towardCenter.x, y: -towardCenter.y };
+    : getOuterDirection(bounds);
   const anchor = marker.direction === "centripetal"
     ? getInnerAnchorPoint(bounds)
     : getOuterAnchorPoint(bounds);
   const perpendicular = { x: -direction.y, y: direction.x };
-  const offset = (index - (total - 1) / 2) * 0.052;
-  const start = {
-    x: anchor.x + perpendicular.x * offset - direction.x * 0.016,
-    y: anchor.y + perpendicular.y * offset - direction.y * 0.016,
+  const offset = (index - (total - 1) / 2) * 0.04;
+  const offsetAnchor = {
+    x: anchor.x + perpendicular.x * offset,
+    y: anchor.y + perpendicular.y * offset,
   };
-  const end = {
-    x: start.x + direction.x * 0.145,
-    y: start.y + direction.y * 0.145,
+  const end = marker.direction === "centrifugal"
+    ? {
+        x: offsetAnchor.x - direction.x * 0.05,
+        y: offsetAnchor.y - direction.y * 0.05,
+      }
+    : {
+        x: offsetAnchor.x + direction.x * 0.129,
+        y: offsetAnchor.y + direction.y * 0.129,
+      };
+  const start = {
+    x: end.x - direction.x * (marker.direction === "centrifugal" ? 0.075 : 0.145),
+    y: end.y - direction.y * (marker.direction === "centrifugal" ? 0.075 : 0.145),
   };
   const headBase = {
     x: end.x - direction.x * 0.045,
@@ -727,6 +740,19 @@ function createPalaceSelfTransformArrow(
   };
 }
 
+function getOuterDirection(bounds: PalaceBounds) {
+  if (bounds.top === 0) {
+    return { x: 0, y: -1 };
+  }
+  if (bounds.bottom === 4) {
+    return { x: 0, y: 1 };
+  }
+  if (bounds.left === 0) {
+    return { x: -1, y: 0 };
+  }
+  return { x: 1, y: 0 };
+}
+
 function normalizeVector(vector: { x: number; y: number }) {
   const length = Math.hypot(vector.x, vector.y) || 1;
   return { x: vector.x / length, y: vector.y / length };
@@ -738,10 +764,16 @@ function getOuterAnchorPoint(bounds: PalaceBounds) {
   const isTopEdge = bounds.top === 0;
   const isBottomEdge = bounds.bottom === 4;
 
-  return {
-    x: isLeftEdge ? bounds.left : isRightEdge ? bounds.right : bounds.centerX,
-    y: isTopEdge ? bounds.top : isBottomEdge ? bounds.bottom : bounds.centerY,
-  };
+  if (isTopEdge) {
+    return { x: bounds.centerX, y: bounds.top };
+  }
+  if (isBottomEdge) {
+    return { x: bounds.centerX, y: bounds.bottom };
+  }
+  if (isLeftEdge) {
+    return { x: bounds.left, y: bounds.centerY };
+  }
+  return { x: isRightEdge ? bounds.right : bounds.centerX, y: bounds.centerY };
 }
 
 function getSelfTransformArrowColor(derivative: PalaceSelfTransformDerivative) {
@@ -763,15 +795,16 @@ function TriangleConnectionLayer({ lines }: { lines: ConnectionLine[] }) {
   }
 
   return (
-    <svg
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 z-30 h-full w-full overflow-visible text-[#7e2c2c]"
-      viewBox="0 0 4 4"
-      preserveAspectRatio="none"
-    >
-      {lines.map((line, index) => (
-        <g key={`${line.tone}-${index}`}>
+    <>
+      <svg
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-30 h-full w-full overflow-visible text-[#7e2c2c]"
+        viewBox="0 0 4 4"
+        preserveAspectRatio="none"
+      >
+        {lines.map((line, index) => (
           <line
+            key={`${line.tone}-${index}`}
             x1={line.from.x}
             y1={line.from.y}
             x2={line.to.x}
@@ -783,25 +816,46 @@ function TriangleConnectionLayer({ lines }: { lines: ConnectionLine[] }) {
             opacity={line.tone === "ji-conflict" ? 0.92 : line.tone === "opposite" ? 0.82 : 0.72}
             vectorEffect="non-scaling-stroke"
           />
-          {line.tone === "ji-conflict" ? (
-            <>
-              <circle cx={line.from.x} cy={line.from.y} r={0.045} fill="#8f2727" vectorEffect="non-scaling-stroke" />
-              <circle cx={line.to.x} cy={line.to.y} r={0.045} fill="#8f2727" vectorEffect="non-scaling-stroke" />
-            </>
-          ) : null}
-        </g>
-      ))}
-      {lines[0] ? (
-        <circle
-          cx={lines[0].from.x}
-          cy={lines[0].from.y}
-          r={0.035}
-          fill="#7e2c2c"
-          opacity={0.72}
-          vectorEffect="non-scaling-stroke"
-        />
-      ) : null}
-    </svg>
+        ))}
+      </svg>
+
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-30 overflow-visible">
+        {lines.flatMap((line, index) => {
+          if (line.tone !== "ji-conflict") {
+            return [];
+          }
+
+          return [
+            <ConnectionEndpoint key={`from-${index}`} point={line.from} />,
+            <ConnectionEndpoint key={`to-${index}`} point={line.to} />,
+          ];
+        })}
+        {lines[0]?.tone !== "ji-conflict" ? (
+          <ConnectionEndpoint point={lines[0].from} subtle />
+        ) : null}
+      </div>
+    </>
+  );
+}
+
+function ConnectionEndpoint({
+  point,
+  subtle = false,
+}: {
+  point: ConnectionLine["from"];
+  subtle?: boolean;
+}) {
+  return (
+    <span
+      data-connection-endpoint={subtle ? "subtle" : "ji-conflict"}
+      className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full ${
+        subtle ? "h-2 w-2 bg-[#7e2c2c]/70" : "h-3 w-3 bg-[#8f2727] shadow-[0_0_0_2px_rgba(255,248,239,0.8)]"
+      }`}
+      style={{
+        left: `${(point.x / 4) * 100}%`,
+        top: `${(point.y / 4) * 100}%`,
+      }}
+    />
   );
 }
 
@@ -841,8 +895,8 @@ function FlyingJiPanel({
   const activeAxis = analysis.conflictAxes.find((axis) => axis.id === activeAxisId) ?? analysis.conflictAxes[0];
 
   return (
-    <section className={`${compact ? "shadow-panel" : "mt-4"} overflow-hidden rounded-[1.5rem] border border-[#cfae96] bg-[#fff8ef]`}>
-      <div className={`flex flex-col gap-2 border-b border-[#e0cbbb] bg-[linear-gradient(135deg,#f8e8dc_0%,#f3dfcf_100%)] px-4 py-3 ${compact ? "" : "md:flex-row md:items-center md:justify-between"}`}>
+    <section className={`${compact ? "flex h-full min-h-0 flex-col shadow-panel" : "mt-4"} overflow-hidden rounded-[1.5rem] border border-[#cfae96] bg-[#fff8ef]`}>
+      <div className={`flex flex-col gap-2 border-b border-[#e0cbbb] bg-[linear-gradient(135deg,#f8e8dc_0%,#f3dfcf_100%)] px-4 py-3 ${compact ? "shrink-0" : "md:flex-row md:items-center md:justify-between"}`}>
         <div>
           <p className="text-[10px] uppercase tracking-[0.28em] text-[#9a6752]">Flying Ji · Palace Stem</p>
           <h3 className="mt-1 font-serif text-lg text-[#552218]">{compact ? "飞宫忌冲核对" : "飞宫派飞忌"}</h3>
@@ -858,7 +912,7 @@ function FlyingJiPanel({
         </div>
       </div>
 
-      <div className="space-y-4 p-4">
+      <div className={`space-y-4 p-4 ${compact ? "min-h-0 flex-1 overflow-y-auto overscroll-contain" : ""}`}>
         <div>
           <p className="text-xs font-medium text-[#6f3024]">选择互冲轴线</p>
           {analysis.conflictAxes.length > 0 ? (
@@ -871,7 +925,7 @@ function FlyingJiPanel({
                     type="button"
                     aria-pressed={isActive}
                     onClick={() => onSelectAxis(axis.id)}
-                    className={`rounded-2xl border px-3 py-3 text-left transition ${
+                    className={`rounded-2xl border px-3 py-3 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[#c98d7b] focus-visible:ring-offset-2 ${
                       isActive
                         ? "border-[#8f2727] bg-[#8f2727] text-white shadow-[0_6px_20px_rgba(143,39,39,0.18)]"
                         : "border-[#dfc8b8] bg-white/70 text-[#59372b] hover:border-[#b97868]"
