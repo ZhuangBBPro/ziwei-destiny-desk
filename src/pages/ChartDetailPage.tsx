@@ -400,7 +400,7 @@ export function ChartDetailPage() {
             <p className="text-xs uppercase tracking-[0.35em] text-[#9b7f52]">Ziwei Destiny Desk</p>
             <h1 className="mt-2 font-serif text-4xl text-[#2f1b0d]">{aggregate.chart.subject_name}</h1>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-[#5f4830]">
-              盘面为工作主视图，点击任一宫位即可联动右侧批注、标签、规则提示与案例复盘区域。
+              盘面为工作主视图，飞宫忌冲在盘侧同步核对；点击任一宫位可联动下方批注与案例复盘区域。
             </p>
           </div>
 
@@ -421,18 +421,20 @@ export function ChartDetailPage() {
               ) : null}
               <button
                 type="button"
-                onClick={() => setWorkspaceTab("workbench")}
+                onClick={() => {
+                  setWorkspaceTab("workbench");
+                  document.getElementById("case-workspace")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
                 className="rounded-full bg-white/70 px-4 py-2 text-sm text-[#654b2e]"
               >
-                工作侧栏
+                案例工作区
               </button>
             </div>
           </div>
         </div>
       </section>
 
-      <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.95fr)_320px]">
-        <div className="space-y-5">
+      <div className="space-y-5">
           <ProfessionalPalaceBoard
             chart={aggregate.chart}
             palaces={aggregate.palaces}
@@ -519,9 +521,9 @@ export function ChartDetailPage() {
               ) : null}
             </CardSection>
           </div>
-        </div>
+      </div>
 
-        <aside className="space-y-4">
+      <section id="case-workspace" className="scroll-mt-4 space-y-4">
           <section className="rounded-[1.8rem] border border-[#eadcc7] bg-white/90 p-4 shadow-panel">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -573,7 +575,7 @@ export function ChartDetailPage() {
           </section>
 
           {workspaceTab === "workbench" ? (
-            <div className="space-y-4">
+            <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
               <CardSection
                 title="案例工作区"
                 description="一命盘多案例的数据结构保留，当前默认维护主案例。"
@@ -1107,8 +1109,7 @@ export function ChartDetailPage() {
               )}
             </CardSection>
           ) : null}
-        </aside>
-      </div>
+      </section>
     </div>
   );
 }

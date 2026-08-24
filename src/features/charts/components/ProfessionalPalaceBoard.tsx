@@ -267,8 +267,9 @@ export function ProfessionalPalaceBoard({
   }, [interpretationPopover]);
 
   return (
-    <div className="overflow-hidden rounded-[2rem] border border-[#d4c4a8] bg-[#efe5d3] p-3 shadow-panel md:p-5">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+    <div className="grid items-start gap-5 2xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="overflow-hidden rounded-[2rem] border border-[#d4c4a8] bg-[#efe5d3] p-3 shadow-panel md:p-5 2xl:p-3.5">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 2xl:mb-2">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-[#8b6b3c]">Professional Board</p>
           <h2 className="mt-1 font-serif text-2xl text-[#3a2413]">本命盘</h2>
@@ -303,7 +304,7 @@ export function ProfessionalPalaceBoard({
       <div className="pb-2">
         <div className="mx-auto w-full max-w-[1180px]">
           <div
-            className="relative grid aspect-square w-full grid-cols-4 grid-rows-4 gap-1.5 md:gap-2 xl:gap-3"
+            className="relative grid aspect-square w-full grid-cols-4 grid-rows-4 gap-1.5 md:gap-2 xl:gap-3 2xl:aspect-[3/2] 2xl:gap-2"
             style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}
           >
             <TriangleConnectionLayer lines={showFlyingJi ? flyingJiConflictLines : defaultTriangleLines} />
@@ -346,7 +347,7 @@ export function ProfessionalPalaceBoard({
 
             <div
               style={{ gridArea: "2 / 2 / 4 / 4" }}
-              className="relative overflow-hidden rounded-[1.4rem] border border-[#d8cab1] bg-[linear-gradient(145deg,#fffaf1_0%,#f4ead7_55%,#ecdfc6_100%)] p-2.5 md:rounded-[1.55rem] md:p-3 xl:rounded-[1.75rem] xl:p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]"
+              className="relative overflow-hidden rounded-[1.4rem] border border-[#d8cab1] bg-[linear-gradient(145deg,#fffaf1_0%,#f4ead7_55%,#ecdfc6_100%)] p-2.5 md:rounded-[1.55rem] md:p-3 xl:rounded-[1.75rem] xl:p-4 2xl:p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]"
             >
               <div className="absolute inset-0 opacity-40">
                 <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-[#d6c5a8]" />
@@ -414,17 +415,29 @@ export function ProfessionalPalaceBoard({
             </div>
           </div>
 
-          {showFlyingJi ? (
-            <FlyingJiPanel
-              analysis={flyingJiAnalysis}
-              activeAxisId={activeFlyingJiAxis?.id ?? ""}
-              onSelectAxis={setSelectedFlyingJiAxisId}
-            />
-          ) : null}
-
           <DecadeStrip palaces={orderedPalaces} selectedPalaceCode={selectedPalace?.palace_code ?? ""} />
         </div>
       </div>
+      </div>
+
+      <aside className="min-w-0 2xl:sticky 2xl:top-4 2xl:max-h-[calc(100vh-13rem)] 2xl:overflow-y-auto 2xl:overscroll-contain">
+        {showFlyingJi ? (
+          <FlyingJiPanel
+            analysis={flyingJiAnalysis}
+            activeAxisId={activeFlyingJiAxis?.id ?? ""}
+            onSelectAxis={setSelectedFlyingJiAxisId}
+            compact
+          />
+        ) : (
+          <section className="rounded-[1.8rem] border border-[#d7b9a7] bg-[#fff8ef] p-5 shadow-panel">
+            <p className="text-xs uppercase tracking-[0.28em] text-[#9a6752]">Flying Ji · Check</p>
+            <h3 className="mt-2 font-serif text-xl text-[#552218]">飞宫忌冲核对</h3>
+            <p className="mt-3 text-sm leading-6 text-[#7d6252]">
+              点击命盘上方的“飞忌分析”，即可在这里同步核对飞忌落宫与对冲关系。
+            </p>
+          </section>
+        )}
+      </aside>
 
       {interpretationPopover && activeInterpretationPalace ? (
         <PalaceInterpretationPopover
@@ -817,21 +830,23 @@ function FlyingJiPanel({
   analysis,
   activeAxisId,
   onSelectAxis,
+  compact = false,
 }: {
   analysis: FlyingJiAnalysis;
   activeAxisId: string;
   onSelectAxis: (axisId: string) => void;
+  compact?: boolean;
 }) {
   const unresolvedFlights = analysis.flights.filter((flight) => !flight.targetPalace);
   const activeAxis = analysis.conflictAxes.find((axis) => axis.id === activeAxisId) ?? analysis.conflictAxes[0];
 
   return (
-    <section className="mt-4 overflow-hidden rounded-[1.5rem] border border-[#cfae96] bg-[#fff8ef]">
-      <div className="flex flex-col gap-2 border-b border-[#e0cbbb] bg-[linear-gradient(135deg,#f8e8dc_0%,#f3dfcf_100%)] px-4 py-3 md:flex-row md:items-center md:justify-between">
+    <section className={`${compact ? "shadow-panel" : "mt-4"} overflow-hidden rounded-[1.5rem] border border-[#cfae96] bg-[#fff8ef]`}>
+      <div className={`flex flex-col gap-2 border-b border-[#e0cbbb] bg-[linear-gradient(135deg,#f8e8dc_0%,#f3dfcf_100%)] px-4 py-3 ${compact ? "" : "md:flex-row md:items-center md:justify-between"}`}>
         <div>
           <p className="text-[10px] uppercase tracking-[0.28em] text-[#9a6752]">Flying Ji · Palace Stem</p>
-          <h3 className="mt-1 font-serif text-lg text-[#552218]">飞宫派飞忌</h3>
-          <p className="mt-1 text-[11px] text-[#7d6252]">按落宫对冲轴合并展示，点击一条只看这一组关系。</p>
+          <h3 className="mt-1 font-serif text-lg text-[#552218]">{compact ? "飞宫忌冲核对" : "飞宫派飞忌"}</h3>
+          <p className="mt-1 text-[11px] leading-5 text-[#7d6252]">按落宫对冲轴合并展示，点击一条即可同步核对盘面关系。</p>
         </div>
         <div className="flex flex-wrap gap-2 text-[11px]">
           <span className="rounded-full border border-[#d5b29f] bg-white/70 px-3 py-1 text-[#714537]">
@@ -847,7 +862,7 @@ function FlyingJiPanel({
         <div>
           <p className="text-xs font-medium text-[#6f3024]">选择互冲轴线</p>
           {analysis.conflictAxes.length > 0 ? (
-            <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <div className={`mt-2 grid gap-2 ${compact ? "grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
               {analysis.conflictAxes.map((axis) => {
                 const isActive = axis.id === activeAxis?.id;
                 return (
@@ -879,7 +894,7 @@ function FlyingJiPanel({
           )}
         </div>
 
-        {activeAxis ? <FlyingJiAxisDetail axis={activeAxis} /> : null}
+        {activeAxis ? <FlyingJiAxisDetail axis={activeAxis} compact={compact} /> : null}
 
         <details className="group rounded-2xl border border-[#dfcbbb] bg-white/55">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-xs font-medium text-[#694437]">
@@ -887,7 +902,7 @@ function FlyingJiPanel({
             <span className="text-[10px] text-[#9a7967] group-open:hidden">展开</span>
             <span className="hidden text-[10px] text-[#9a7967] group-open:inline">收起</span>
           </summary>
-          <div className="grid gap-2 border-t border-[#ead9cc] p-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className={`grid gap-2 border-t border-[#ead9cc] p-3 ${compact ? "" : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"}`}>
             {analysis.flights.map((flight) => (
               <div key={flight.sourcePalace.palace_code} className="rounded-xl bg-[#fbf2e8] px-3 py-2 text-[11px]">
                 <p className="font-medium text-[#513326]">
@@ -915,7 +930,7 @@ function FlyingJiPanel({
   );
 }
 
-function FlyingJiAxisDetail({ axis }: { axis: FlyingJiConflictAxis }) {
+function FlyingJiAxisDetail({ axis, compact = false }: { axis: FlyingJiConflictAxis; compact?: boolean }) {
   return (
     <article className="rounded-2xl border border-[#c98d7b] bg-white/80 p-3 shadow-[0_5px_18px_rgba(93,38,25,0.08)]">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -930,7 +945,7 @@ function FlyingJiAxisDetail({ axis }: { axis: FlyingJiConflictAxis }) {
           <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[#8f2727]" />落宫</span>
         </div>
       </div>
-      <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-stretch">
+      <div className={`grid gap-2 ${compact ? "" : "md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-stretch"}`}>
         <FlyingJiAxisSide targetPalace={axis.firstTargetPalace} flights={axis.firstFlights} />
         <div className="flex items-center justify-center py-1">
           <span className="rounded-full bg-[#f1ded6] px-3 py-1 text-[11px] font-medium text-[#8f2727]">落宫对冲</span>
@@ -1272,7 +1287,7 @@ function buildPalaceCardClass({
   isFlyingJiSource: boolean;
   isFlyingJiTarget: boolean;
 }) {
-  const baseClass = "touch-manipulation select-none overflow-hidden rounded-[1.35rem] p-2 transition md:p-2.5 xl:p-3";
+  const baseClass = "touch-manipulation select-none overflow-hidden rounded-[1.35rem] p-2 transition md:p-2.5 xl:p-3 2xl:p-2.5";
 
   if (isFlyingJiTarget) {
     return `${baseClass} border-2 border-[#9d3028] bg-[#fff1eb] shadow-[0_8px_28px_rgba(143,39,39,0.2)]`;
