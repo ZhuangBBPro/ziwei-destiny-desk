@@ -10,8 +10,7 @@ import { getBirthCalendarLabel } from "@/features/charts/lib/birthDisplay";
 import {
   analyzeFlyingJi,
   type FlyingJiAnalysis,
-  type FlyingJiConflictAxis,
-  type FlyingJiFlight,
+  type JiOppositionRelation,
 } from "@/features/charts/lib/flyingJi";
 import {
   analyzePalaceSelfTransforms,
@@ -115,6 +114,14 @@ interface InterpretationPopoverState {
   y: number;
 }
 
+type JiPalaceRole = "natal-origin" | "shot-origin" | "impacted" | "entangled";
+
+interface JiPalaceMarker {
+  role: JiPalaceRole;
+  label: string;
+  detail: string;
+}
+
 const BOARD_CENTER = {
   x: 2,
   y: 2,
@@ -138,25 +145,16 @@ export function ProfessionalPalaceBoard({
   const transformEntries = readTransformEntries(chart.snapshot_json);
   const highlightedPalaces = getHighlightedPalaces(orderedPalaces, selectedPalace?.palace_code, transformEntries);
   const defaultTriangleLines = getDefaultTriangleLines(orderedPalaces, selectedPalace?.palace_code);
-  const flyingJiAnalysis = analyzeFlyingJi(orderedPalaces);
+  const natalJiStarName = transformEntries.find((entry) => isJiDerivative(entry.derivative))?.starName ?? null;
+  const flyingJiAnalysis = analyzeFlyingJi(orderedPalaces, natalJiStarName);
   const selfTransformsByPalace = analyzePalaceSelfTransforms(orderedPalaces);
   const [showFlyingJi, setShowFlyingJi] = useState(true);
-  const [selectedFlyingJiAxisId, setSelectedFlyingJiAxisId] = useState<string | null>(null);
-  const activeFlyingJiAxis =
-    flyingJiAnalysis.conflictAxes.find((axis) => axis.id === selectedFlyingJiAxisId) ??
-    flyingJiAnalysis.conflictAxes[0];
-  const activeFlyingJiFlights = activeFlyingJiAxis
-    ? [...activeFlyingJiAxis.firstFlights, ...activeFlyingJiAxis.secondFlights]
-    : [];
-  const flyingJiBySource = new Map(
-    activeFlyingJiFlights.map((flight) => [flight.sourcePalace.palace_code, flight]),
-  );
-  const flyingJiSourceCodes = new Set(flyingJiBySource.keys());
-  const flyingJiTargetCodes = new Set([
-    activeFlyingJiAxis?.firstTargetPalace.palace_code,
-    activeFlyingJiAxis?.secondTargetPalace.palace_code,
-  ].filter((palaceCode): palaceCode is string => Boolean(palaceCode)));
-  const flyingJiConflictLines = getFlyingJiConflictLine(activeFlyingJiAxis);
+  const [selectedJiRelationId, setSelectedJiRelationId] = useState<string | null>(null);
+  const activeJiRelation =
+    flyingJiAnalysis.relations.find((relation) => relation.id === selectedJiRelationId) ??
+    flyingJiAnalysis.relations[0];
+  const activeJiMarkers = getJiPalaceMarkers(activeJiRelation);
+  const flyingJiConflictLines = getJiRelationLine(activeJiRelation);
   const [interpretationPopover, setInterpretationPopover] = useState<InterpretationPopoverState | null>(null);
   const lastTouchTapRef = useRef<{ palaceCode: string; time: number; x: number; y: number } | null>(null);
   const activeInterpretationPalace = interpretationPopover
@@ -328,8 +326,7 @@ export function ProfessionalPalaceBoard({
                 className={buildPalaceCardClass({
                   isSelected: palace.palace_code === selectedPalace?.palace_code,
                   isHighlighted: highlightedPalaces.has(palace.palace_code),
-                  isFlyingJiSource: showFlyingJi && flyingJiSourceCodes.has(palace.palace_code),
-                  isFlyingJiTarget: showFlyingJi && flyingJiTargetCodes.has(palace.palace_code),
+                  jiRole: showFlyingJi ? activeJiMarkers.get(palace.palace_code)?.role : undefined,
                 })}
               >
                 <PalaceFace
@@ -338,9 +335,7 @@ export function ProfessionalPalaceBoard({
                   transforms={findPalaceTransforms(palace, transformEntries)}
                   showTransforms
                   relationLabel={highlightedPalaces.get(palace.palace_code)}
-                  flyingJi={showFlyingJi ? flyingJiBySource.get(palace.palace_code) : undefined}
-                  isFlyingJiSource={showFlyingJi && flyingJiSourceCodes.has(palace.palace_code)}
-                  isFlyingJiTarget={showFlyingJi && flyingJiTargetCodes.has(palace.palace_code)}
+                  jiMarker={showFlyingJi ? activeJiMarkers.get(palace.palace_code) : undefined}
                 />
               </button>
             ))}
@@ -425,8 +420,8 @@ export function ProfessionalPalaceBoard({
           {showFlyingJi ? (
             <FlyingJiPanel
               analysis={flyingJiAnalysis}
-              activeAxisId={activeFlyingJiAxis?.id ?? ""}
-              onSelectAxis={setSelectedFlyingJiAxisId}
+              activeRelationId={activeJiRelation?.id ?? ""}
+              onSelectRelation={setSelectedJiRelationId}
               compact
             />
           ) : (
@@ -460,18 +455,14 @@ function PalaceFace({
   transforms,
   showTransforms,
   relationLabel,
-  flyingJi,
-  isFlyingJiSource,
-  isFlyingJiTarget,
+  jiMarker,
 }: {
   palace: ChartPalaceRecord;
   selected: boolean;
   transforms: TransformEntry[];
   showTransforms: boolean;
   relationLabel?: string;
-  flyingJi?: FlyingJiFlight;
-  isFlyingJiSource: boolean;
-  isFlyingJiTarget: boolean;
+  jiMarker?: JiPalaceMarker;
 }) {
   const ageRange = readAgeRangeFromSnapshot(palace.palace_snapshot_json);
   const lifeStage = readName(palace.palace_snapshot_json.lifeStage);
@@ -493,14 +484,9 @@ function PalaceFace({
                 {relationLabel}
               </span>
             ) : null}
-            {isFlyingJiTarget ? (
-              <span className="rounded-md bg-[#8f2727] px-1.5 py-0.5 text-[9px] font-medium text-white">
-                互冲落宫
-              </span>
-            ) : null}
-            {isFlyingJiSource ? (
-              <span className="rounded-md bg-[#d89b45]/20 px-1.5 py-0.5 text-[9px] font-medium text-[#8a581c]">
-                飞忌源
+            {jiMarker ? (
+              <span className={getJiMarkerBadgeClass(jiMarker.role)}>
+                {jiMarker.label}
               </span>
             ) : null}
           </div>
@@ -520,7 +506,7 @@ function PalaceFace({
       </div>
 
       <div className={`mt-2 min-h-0 flex-1 overflow-hidden text-[11px] leading-4 md:text-[12px] md:leading-[1.15rem] xl:mt-2 xl:text-[13px] ${
-        flyingJi ? "space-y-0.5 xl:space-y-1" : "space-y-1 xl:space-y-1.5"
+        jiMarker ? "space-y-0.5 xl:space-y-1" : "space-y-1 xl:space-y-1.5"
       }`}>
         <StarLine
           label="主"
@@ -551,16 +537,13 @@ function PalaceFace({
         />
       </div>
 
-      {flyingJi ? (
-        <div className="mt-1 flex shrink-0 flex-nowrap items-center gap-x-1.5 border-t border-[#d6a660] pt-1 text-[9px] leading-3 text-[#81521a] xl:text-[10px]">
-          <span className="shrink-0 font-medium">宫干 {flyingJi.sourcePalace.heavenly_stem}</span>
-          <span className="min-w-0 truncate">
-            飞 {flyingJi.jiStarName}忌 → {flyingJi.targetPalace?.palace_name ?? "未定位"}
-          </span>
+      {jiMarker ? (
+        <div className={`mt-1 shrink-0 truncate border-t pt-1 text-[9px] leading-3 xl:text-[10px] ${getJiMarkerDetailClass(jiMarker.role)}`}>
+          {jiMarker.detail}
         </div>
       ) : null}
 
-      {selected && !flyingJi ? (
+      {selected && !jiMarker ? (
         <div className="mt-1.5 shrink-0 border-t border-[#dccdb7] pt-1.5 text-[9px] text-[#6c5336] xl:text-[10px]">
           已联动下方批注与验证记录
         </div>
@@ -866,13 +849,14 @@ function getConnectionLineColor(tone: ConnectionLine["tone"]) {
   return tone === "opposite" ? "#7e2c2c" : "#2f7b66";
 }
 
-function getFlyingJiConflictLine(axis: FlyingJiConflictAxis | undefined): ConnectionLine[] {
-  if (!axis) {
+function getJiRelationLine(relation: JiOppositionRelation | undefined): ConnectionLine[] {
+  if (!relation) {
     return [];
   }
 
-  const firstBounds = getPalaceBounds(axis.firstTargetPalace);
-  const secondBounds = getPalaceBounds(axis.secondTargetPalace);
+  const [firstPalace, secondPalace] = getJiRelationPalaces(relation);
+  const firstBounds = getPalaceBounds(firstPalace);
+  const secondBounds = getPalaceBounds(secondPalace);
   const points = firstBounds && secondBounds ? getCornerConnectionPoints(firstBounds, secondBounds) : null;
 
   return points
@@ -882,73 +866,74 @@ function getFlyingJiConflictLine(axis: FlyingJiConflictAxis | undefined): Connec
 
 function FlyingJiPanel({
   analysis,
-  activeAxisId,
-  onSelectAxis,
+  activeRelationId,
+  onSelectRelation,
   compact = false,
 }: {
   analysis: FlyingJiAnalysis;
-  activeAxisId: string;
-  onSelectAxis: (axisId: string) => void;
+  activeRelationId: string;
+  onSelectRelation: (relationId: string) => void;
   compact?: boolean;
 }) {
   const unresolvedFlights = analysis.flights.filter((flight) => !flight.targetPalace);
-  const activeAxis = analysis.conflictAxes.find((axis) => axis.id === activeAxisId) ?? analysis.conflictAxes[0];
+  const activeRelation = analysis.relations.find((relation) => relation.id === activeRelationId) ?? analysis.relations[0];
 
   return (
     <section className={`${compact ? "flex h-full min-h-0 flex-col shadow-panel" : "mt-4"} overflow-hidden rounded-[1.5rem] border border-[#cfae96] bg-[#fff8ef]`}>
       <div className={`flex flex-col gap-2 border-b border-[#e0cbbb] bg-[linear-gradient(135deg,#f8e8dc_0%,#f3dfcf_100%)] px-4 py-3 ${compact ? "shrink-0" : "md:flex-row md:items-center md:justify-between"}`}>
         <div>
-          <p className="text-[10px] uppercase tracking-[0.28em] text-[#9a6752]">Flying Ji · Palace Stem</p>
-          <h3 className="mt-1 font-serif text-lg text-[#552218]">{compact ? "飞宫忌冲核对" : "飞宫派飞忌"}</h3>
-          <p className="mt-1 text-[11px] leading-5 text-[#7d6252]">按落宫对冲轴合并展示，点击一条即可同步核对盘面关系。</p>
+          <p className="text-[10px] uppercase tracking-[0.28em] text-[#9a6752]">Ji Opposition · Direction</p>
+          <h3 className="mt-1 font-serif text-lg text-[#552218]">化忌对冲辨识</h3>
+          <p className="mt-1 text-[11px] leading-5 text-[#7d6252]">先分清“生年忌坐宫”与“宫干飞忌”，再看力量从哪里来、冲到哪里。</p>
         </div>
-        <div className="flex flex-wrap gap-2 text-[11px]">
-          <span className="rounded-full border border-[#d5b29f] bg-white/70 px-3 py-1 text-[#714537]">
-            十二宫 {analysis.flights.length} 条飞忌
+        <div className="grid grid-cols-3 gap-1.5 text-center text-[10px]">
+          <span className="rounded-xl border border-[#d5b29f] bg-white/70 px-2 py-1.5 text-[#714537]">
+            生年忌冲<br /><strong>{analysis.natalJi ? 1 : 0}</strong>
           </span>
-          <span className="rounded-full bg-[#8f2727] px-3 py-1 font-medium text-white">
-            {analysis.conflictAxes.length} 条互冲轴线
+          <span className="rounded-xl border border-[#d6a660] bg-[#fff8e9] px-2 py-1.5 text-[#81521a]">
+            射出忌<br /><strong>{analysis.shotJi.length}</strong>
+          </span>
+          <span className="rounded-xl bg-[#6f2942] px-2 py-1.5 text-white">
+            纠缠忌<br /><strong>{analysis.entangledJi.length}</strong>
           </span>
         </div>
       </div>
 
       <div className={`space-y-4 p-4 ${compact ? "min-h-0 flex-1 overflow-y-auto overscroll-contain" : ""}`}>
-        <div>
-          <p className="text-xs font-medium text-[#6f3024]">选择互冲轴线</p>
-          {analysis.conflictAxes.length > 0 ? (
-            <div className={`mt-2 grid gap-2 ${compact ? "grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
-              {analysis.conflictAxes.map((axis) => {
-                const isActive = axis.id === activeAxis?.id;
-                return (
-                  <button
-                    key={axis.id}
-                    type="button"
-                    aria-pressed={isActive}
-                    onClick={() => onSelectAxis(axis.id)}
-                    className={`rounded-2xl border px-3 py-3 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[#c98d7b] focus-visible:ring-offset-2 ${
-                      isActive
-                        ? "border-[#8f2727] bg-[#8f2727] text-white shadow-[0_6px_20px_rgba(143,39,39,0.18)]"
-                        : "border-[#dfc8b8] bg-white/70 text-[#59372b] hover:border-[#b97868]"
-                    }`}
-                  >
-                    <span className="block font-serif text-base">
-                      {axis.firstTargetPalace.palace_name} ↔ {axis.secondTargetPalace.palace_name}
-                    </span>
-                    <span className={`mt-1 block text-[10px] ${isActive ? "text-white/75" : "text-[#8a6a5a]"}`}>
-                      {axis.firstFlights.length + axis.secondFlights.length} 个相关起飞宫
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="mt-2 rounded-2xl border border-dashed border-[#d8bea9] bg-white/60 px-4 py-3 text-sm text-[#755846]">
-              本盘未发现飞忌分别落入对宫的轴线。
-            </div>
-          )}
+        <div className="grid grid-cols-2 gap-2 text-[10px] leading-4">
+          <div className="rounded-xl border border-[#d7a59b] bg-[#fff1ed] p-2.5 text-[#743d34]">
+            <strong className="block text-[#8f2727]">① 生年化忌</strong>
+            星曜先天带忌；忌坐本宫，本宫是问题发生地，对宫承受冲击。
+          </div>
+          <div className="rounded-xl border border-[#dbc38f] bg-[#fff9e9] p-2.5 text-[#73562a]">
+            <strong className="block text-[#8a581c]">② 宫干飞忌</strong>
+            宫干主动飞化；只有飞入自己的对宫，才叫射出忌。
+          </div>
         </div>
 
-        {activeAxis ? <FlyingJiAxisDetail axis={activeAxis} compact={compact} /> : null}
+        <JiRelationGroup
+          title="生年忌坐宫 → 冲对宫"
+          emptyText="未定位到本命生年化忌坐宫。"
+          relations={analysis.natalJi ? [analysis.natalJi] : []}
+          activeRelationId={activeRelation?.id ?? ""}
+          onSelectRelation={onSelectRelation}
+        />
+        <JiRelationGroup
+          title="射出忌 · A宫飞忌入自己的对宫"
+          emptyText="本盘没有符合条件的射出忌。"
+          relations={analysis.shotJi}
+          activeRelationId={activeRelation?.id ?? ""}
+          onSelectRelation={onSelectRelation}
+        />
+        <JiRelationGroup
+          title="纠缠忌 · 对宫双方互相飞忌"
+          emptyText="本盘没有形成双向纠缠忌。"
+          relations={analysis.entangledJi}
+          activeRelationId={activeRelation?.id ?? ""}
+          onSelectRelation={onSelectRelation}
+        />
+
+        {activeRelation ? <JiRelationDetail relation={activeRelation} /> : null}
 
         <details className="group rounded-2xl border border-[#dfcbbb] bg-white/55">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-xs font-medium text-[#694437]">
@@ -976,68 +961,295 @@ function FlyingJiPanel({
           </p>
         ) : null}
 
-        <p className="text-[10px] leading-5 text-[#876957]">
-          判定口径：起飞宫以本宫天干取化忌星；两条飞忌的落宫互为对宫时，标为“飞忌互冲（纠缠忌）”。
+        <p className="rounded-xl bg-[#f5eadf] px-3 py-2 text-[10px] leading-5 text-[#785c4b]">
+          缓冲与加重：化禄、化科同宫或会照可缓冲；羊、陀、火、铃等煞曜叠加时冲击更明显。对冲表示结构性拉扯，不作单一事件的铁断。
         </p>
       </div>
     </section>
   );
 }
 
-function FlyingJiAxisDetail({ axis, compact = false }: { axis: FlyingJiConflictAxis; compact?: boolean }) {
+function JiRelationGroup({
+  title,
+  emptyText,
+  relations,
+  activeRelationId,
+  onSelectRelation,
+}: {
+  title: string;
+  emptyText: string;
+  relations: JiOppositionRelation[];
+  activeRelationId: string;
+  onSelectRelation: (relationId: string) => void;
+}) {
   return (
-    <article className="rounded-2xl border border-[#c98d7b] bg-white/80 p-3 shadow-[0_5px_18px_rgba(93,38,25,0.08)]">
-      <div className="mb-3 flex items-center justify-between gap-3">
+    <div>
+      <p className="text-[11px] font-medium text-[#6f3024]">{title}</p>
+      {relations.length > 0 ? (
+        <div className="mt-2 space-y-1.5">
+          {relations.map((relation) => {
+            const isActive = relation.id === activeRelationId;
+            return (
+              <button
+                key={relation.id}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => onSelectRelation(relation.id)}
+                className={`w-full rounded-xl border px-3 py-2 text-left text-[11px] leading-4 outline-none transition ${
+                  isActive
+                    ? "border-[#8f2727] bg-[#8f2727] text-white shadow-[0_4px_14px_rgba(143,39,39,0.16)]"
+                    : "border-[#dfc8b8] bg-white/75 text-[#59372b] hover:border-[#b97868]"
+                }`}
+              >
+                <span className="font-medium">{getJiRelationTitle(relation)}</span>
+                <span className={`mt-0.5 block text-[9px] ${isActive ? "text-white/75" : "text-[#957464]"}`}>
+                  {getJiRelationSubtitle(relation)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="mt-1.5 rounded-xl border border-dashed border-[#decdbf] bg-white/45 px-3 py-2 text-[10px] text-[#927666]">
+          {emptyText}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function JiRelationDetail({ relation }: { relation: JiOppositionRelation }) {
+  const [firstPalace, secondPalace] = getJiRelationPalaces(relation);
+
+  return (
+    <article className="rounded-2xl border border-[#c98d7b] bg-white/85 p-3 shadow-[0_5px_18px_rgba(93,38,25,0.08)]">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[10px] uppercase tracking-[0.2em] text-[#a17462]">当前互冲关系</p>
-          <h4 className="mt-1 font-serif text-lg text-[#69291f]">
-            {axis.firstTargetPalace.palace_name} ↔ {axis.secondTargetPalace.palace_name}
-          </h4>
+          <span className={getJiTypePillClass(relation.type)}>{getJiTypeLabel(relation.type)}</span>
+          <h4 className="mt-2 font-serif text-lg text-[#69291f]">{getJiRelationTitle(relation)}</h4>
         </div>
-        <div className="flex items-center gap-3 text-[10px] text-[#826252]">
-          <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[#d89b45]" />起飞宫</span>
-          <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[#8f2727]" />落宫</span>
-        </div>
+        <span className="rounded-full bg-[#f1ded6] px-2.5 py-1 text-[9px] text-[#8f2727]">方向必须分清</span>
       </div>
-      <div className={`grid gap-2 ${compact ? "" : "md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-stretch"}`}>
-        <FlyingJiAxisSide targetPalace={axis.firstTargetPalace} flights={axis.firstFlights} />
-        <div className="flex items-center justify-center py-1">
-          <span className="rounded-full bg-[#f1ded6] px-3 py-1 text-[11px] font-medium text-[#8f2727]">落宫对冲</span>
+
+      <div className="mt-3 grid gap-2">
+        <JiDirectionCard relation={relation} palace={firstPalace} position="first" />
+        <div className="flex items-center justify-center">
+          <span className="rounded-full bg-[#8f2727] px-3 py-1 text-[10px] font-medium text-white">
+            {getJiDirectionLabel(relation)}
+          </span>
         </div>
-        <FlyingJiAxisSide targetPalace={axis.secondTargetPalace} flights={axis.secondFlights} />
+        <JiDirectionCard relation={relation} palace={secondPalace} position="second" />
+      </div>
+
+      <div className="mt-3 rounded-xl border border-[#ead4c7] bg-[#fff8f1] p-3">
+        <p className="text-[10px] font-semibold tracking-[0.12em] text-[#8f5c45]">现实象义怎么读</p>
+        <p className="mt-1.5 text-[11px] leading-5 text-[#604638]">{getJiRealityMeaning(relation)}</p>
       </div>
     </article>
   );
 }
 
-function FlyingJiAxisSide({
-  targetPalace,
-  flights,
+function JiDirectionCard({
+  relation,
+  palace,
+  position,
 }: {
-  targetPalace: ChartPalaceRecord;
-  flights: FlyingJiFlight[];
+  relation: JiOppositionRelation;
+  palace: ChartPalaceRecord;
+  position: "first" | "second";
 }) {
+  const copy = getJiDirectionCardCopy(relation, position);
   return (
-    <div className="rounded-xl border border-[#ead5c8] bg-[#fff9f4] p-3">
+    <div className={`rounded-xl border p-3 ${copy.toneClass}`}>
       <div className="flex items-center justify-between gap-2">
-        <p className="font-serif text-base text-[#632a21]">落入 {targetPalace.palace_name}</p>
-        <span className="rounded-full bg-[#8f2727] px-2 py-0.5 text-[9px] text-white">互冲落宫</span>
+        <p className="font-serif text-base text-[#632a21]">{palace.palace_name}</p>
+        <span className="rounded-full bg-white/75 px-2 py-0.5 text-[9px] font-medium text-[#7c4b3d]">{copy.role}</span>
       </div>
-      <div className="mt-2 space-y-1.5">
-        {flights.map((flight) => (
-          <div key={flight.sourcePalace.palace_code} className="flex items-center justify-between gap-2 rounded-lg bg-[#f8eadc] px-2.5 py-2 text-[11px]">
-            <span className="font-medium text-[#734514]">
-              {flight.sourcePalace.palace_name} · {flight.sourcePalace.heavenly_stem}
-            </span>
-            <span className="text-right text-[#765846]">飞 {flight.jiStarName}忌</span>
-          </div>
-        ))}
-      </div>
-      <p className="mt-2 text-[10px] text-[#957363]">
-        上述起飞宫的化忌都落在这里。
-      </p>
+      <p className="mt-1 text-[10px] leading-4 text-[#765246]">{copy.mechanism}</p>
+      <p className="mt-2 border-t border-black/5 pt-2 text-[10px] leading-4 text-[#765f52]">关注：{getPalaceMeaning(palace)}</p>
     </div>
   );
+}
+
+function getJiRelationPalaces(relation: JiOppositionRelation) {
+  if (relation.type === "natal") {
+    return [relation.seatedPalace, relation.impactedPalace] as const;
+  }
+  if (relation.type === "shot") {
+    return [relation.flight.sourcePalace, relation.flight.targetPalace] as const;
+  }
+  return [relation.firstFlight.sourcePalace, relation.firstFlight.targetPalace] as const;
+}
+
+function getJiPalaceMarkers(relation: JiOppositionRelation | undefined) {
+  const markers = new Map<string, JiPalaceMarker>();
+  if (!relation) {
+    return markers;
+  }
+
+  if (relation.type === "natal") {
+    markers.set(relation.seatedPalace.palace_code, {
+      role: "natal-origin",
+      label: "生年忌坐",
+      detail: `生年 ${relation.jiStarName}化忌坐本宫 → 冲 ${relation.impactedPalace.palace_name}`,
+    });
+    markers.set(relation.impactedPalace.palace_code, {
+      role: "impacted",
+      label: "被忌冲",
+      detail: `← ${relation.seatedPalace.palace_name}的生年${relation.jiStarName}忌冲入`,
+    });
+    return markers;
+  }
+
+  if (relation.type === "shot") {
+    const { flight } = relation;
+    markers.set(flight.sourcePalace.palace_code, {
+      role: "shot-origin",
+      label: "射出忌源",
+      detail: `宫干 ${flight.sourcePalace.heavenly_stem} 飞 ${flight.jiStarName}忌 → ${flight.targetPalace.palace_name}`,
+    });
+    markers.set(flight.targetPalace.palace_code, {
+      role: "impacted",
+      label: "被忌冲",
+      detail: `← ${flight.sourcePalace.palace_name}宫干飞${flight.jiStarName}忌冲入`,
+    });
+    return markers;
+  }
+
+  const { firstFlight, secondFlight } = relation;
+  markers.set(firstFlight.sourcePalace.palace_code, {
+    role: "entangled",
+    label: "纠缠忌",
+    detail: `飞${firstFlight.jiStarName}忌 → ${firstFlight.targetPalace.palace_name}；又被对宫飞忌冲回`,
+  });
+  markers.set(secondFlight.sourcePalace.palace_code, {
+    role: "entangled",
+    label: "纠缠忌",
+    detail: `飞${secondFlight.jiStarName}忌 → ${secondFlight.targetPalace.palace_name}；又被对宫飞忌冲回`,
+  });
+  return markers;
+}
+
+function getJiMarkerBadgeClass(role: JiPalaceRole) {
+  const base = "rounded-md px-1.5 py-0.5 text-[9px] font-medium";
+  if (role === "natal-origin") {
+    return `${base} bg-[#8f2727] text-white`;
+  }
+  if (role === "shot-origin") {
+    return `${base} bg-[#d89b45]/25 text-[#81521a]`;
+  }
+  if (role === "entangled") {
+    return `${base} bg-[#6f2942] text-white`;
+  }
+  return `${base} bg-[#b96352] text-white`;
+}
+
+function getJiMarkerDetailClass(role: JiPalaceRole) {
+  if (role === "shot-origin") {
+    return "border-[#d6a660] text-[#81521a]";
+  }
+  if (role === "entangled") {
+    return "border-[#9d5870] text-[#6f2942]";
+  }
+  return "border-[#c98578] text-[#8f2727]";
+}
+
+function getJiRelationTitle(relation: JiOppositionRelation) {
+  if (relation.type === "natal") {
+    return `${relation.jiStarName}化忌坐${relation.seatedPalace.palace_name} → 冲${relation.impactedPalace.palace_name}`;
+  }
+  if (relation.type === "shot") {
+    return `${relation.flight.sourcePalace.palace_name}飞${relation.flight.jiStarName}忌 → ${relation.flight.targetPalace.palace_name}`;
+  }
+  return `${relation.firstFlight.sourcePalace.palace_name} ↔ ${relation.firstFlight.targetPalace.palace_name}`;
+}
+
+function getJiRelationSubtitle(relation: JiOppositionRelation) {
+  if (relation.type === "natal") {
+    return "本宫有先天忌，对宫承受震荡";
+  }
+  if (relation.type === "shot") {
+    return `宫干 ${relation.flight.sourcePalace.heavenly_stem} 主动投射到自己的对宫`;
+  }
+  return `${relation.firstFlight.jiStarName}忌去 · ${relation.secondFlight.jiStarName}忌回，双向循环`;
+}
+
+function getJiTypeLabel(type: JiOppositionRelation["type"]) {
+  if (type === "natal") return "生年忌冲";
+  if (type === "shot") return "射出忌";
+  return "纠缠忌 · 双向";
+}
+
+function getJiTypePillClass(type: JiOppositionRelation["type"]) {
+  const base = "inline-flex rounded-full px-2.5 py-1 text-[9px] font-semibold";
+  if (type === "natal") return `${base} bg-[#8f2727] text-white`;
+  if (type === "shot") return `${base} bg-[#f0d8a9] text-[#754914]`;
+  return `${base} bg-[#6f2942] text-white`;
+}
+
+function getJiDirectionLabel(relation: JiOppositionRelation) {
+  if (relation.type === "natal") {
+    return `${relation.jiStarName}化忌坐守 → 冲照`;
+  }
+  if (relation.type === "shot") {
+    return `宫干飞 ${relation.flight.jiStarName}忌 →`;
+  }
+  return "← 双方互飞化忌 →";
+}
+
+function getJiDirectionCardCopy(
+  relation: JiOppositionRelation,
+  position: "first" | "second",
+) {
+  if (relation.type === "natal") {
+    return position === "first"
+      ? { role: "问题发生地", mechanism: `生年${relation.jiStarName}化忌先天坐在这里，本宫先受伤、劳心与内耗。`, toneClass: "border-[#c98578] bg-[#fff0ec]" }
+      : { role: "被冲宫", mechanism: `承受${relation.seatedPalace.palace_name}的忌冲，表现为震荡、牵连与压力投射。`, toneClass: "border-[#ddb08c] bg-[#fff8ef]" };
+  }
+  if (relation.type === "shot") {
+    return position === "first"
+      ? { role: "力量来源", mechanism: `本宫宫干${relation.flight.sourcePalace.heavenly_stem}主动飞出${relation.flight.jiStarName}忌，源头偏向本宫的顾虑、执念或耗散。`, toneClass: "border-[#d6a660] bg-[#fff8e9]" }
+      : { role: "被冲宫", mechanism: "化忌飞入本宫；本宫是对面的承压位置，现实事项容易被打击或受阻。", toneClass: "border-[#c98578] bg-[#fff1ed]" };
+  }
+
+  const flight = position === "first" ? relation.firstFlight : relation.secondFlight;
+  return {
+    role: "既是源头，也被冲",
+    mechanism: `本宫飞${flight.jiStarName}忌到对宫，同时又承受对宫飞忌冲回，形成反复循环。`,
+    toneClass: "border-[#9d5870] bg-[#fff2f6]",
+  };
+}
+
+const PALACE_MEANINGS: Record<string, string> = {
+  命宫: "自我认同、个人状态、选择与行动方式",
+  兄弟: "手足同辈、内部协作、现金周转与资源支持",
+  夫妻: "婚姻伴侣、亲密关系、合作与相处模式",
+  子女: "子女晚辈、作品成果、情欲表达与培养投入",
+  财帛: "收入求财、金钱往来、价值感与资源配置",
+  疾厄: "身体健康、情绪反应、生活习惯与隐性压力",
+  遷移: "外出异地、社会环境、陌生人际与外界评价",
+  迁移: "外出异地、社会环境、陌生人际与外界评价",
+  交友: "朋友同事、合作圈层、部属与外部协作",
+  事業: "事业工作、职责表现、职场评价与发展计划",
+  事业: "事业工作、职责表现、职场评价与发展计划",
+  官禄: "事业工作、职责表现、职场评价与发展计划",
+  田宅: "家庭居所、不动产、家族关系与单位环境",
+  福德: "精神状态、内在福气、休息享受与情绪安定",
+  父母: "父母长辈、上级制度、文书证件与庇护关系",
+};
+
+function getPalaceMeaning(palace: ChartPalaceRecord) {
+  return PALACE_MEANINGS[palace.palace_name] ?? `${palace.palace_name}所代表的人事与现实领域`;
+}
+
+function getJiRealityMeaning(relation: JiOppositionRelation) {
+  if (relation.type === "natal") {
+    return `${relation.seatedPalace.palace_name}是问题发生地，重点观察${getPalaceMeaning(relation.seatedPalace)}中的劳心、反复与内耗；压力会进一步投射到${relation.impactedPalace.palace_name}，使${getPalaceMeaning(relation.impactedPalace)}承受震荡。不是单断某件凶事，而是两宫长期容易互相牵动。`;
+  }
+  if (relation.type === "shot") {
+    return `力量由${relation.flight.sourcePalace.palace_name}主动发出。源头多在${getPalaceMeaning(relation.flight.sourcePalace)}上的顾虑、执念或自我设限，并投射到${relation.flight.targetPalace.palace_name}，令${getPalaceMeaning(relation.flight.targetPalace)}受阻。判断时先找源头，不宜把问题全部归因于外界。`;
+  }
+  return `${relation.firstFlight.sourcePalace.palace_name}与${relation.firstFlight.targetPalace.palace_name}双向互飞化忌：处理${getPalaceMeaning(relation.firstFlight.sourcePalace)}时会牵伤${getPalaceMeaning(relation.firstFlight.targetPalace)}；反过来亦然。常见“顾此失彼、反复拉扯、跳不出循环”的结构。`;
 }
 
 function PalaceInterpretationPopover({
@@ -1333,22 +1545,28 @@ function BoardBadge({ label }: { label: string }) {
 function buildPalaceCardClass({
   isSelected,
   isHighlighted,
-  isFlyingJiSource,
-  isFlyingJiTarget,
+  jiRole,
 }: {
   isSelected: boolean;
   isHighlighted: boolean;
-  isFlyingJiSource: boolean;
-  isFlyingJiTarget: boolean;
+  jiRole?: JiPalaceRole;
 }) {
   const baseClass = "touch-manipulation select-none overflow-hidden rounded-[1.35rem] p-2 transition md:p-2.5 xl:p-3 2xl:p-2.5";
 
-  if (isFlyingJiTarget) {
-    return `${baseClass} border-2 border-[#9d3028] bg-[#fff1eb] shadow-[0_8px_28px_rgba(143,39,39,0.2)]`;
+  if (jiRole === "entangled") {
+    return `${baseClass} border-2 border-[#6f2942] bg-[#fff2f6] shadow-[0_8px_28px_rgba(111,41,66,0.2)]`;
   }
 
-  if (isFlyingJiSource) {
-    return `${baseClass} border border-[#bd7765] bg-[#fff8f1] shadow-[0_6px_22px_rgba(126,44,44,0.11)]`;
+  if (jiRole === "natal-origin") {
+    return `${baseClass} border-2 border-[#8f2727] bg-[#fff0ec] shadow-[0_8px_28px_rgba(143,39,39,0.2)]`;
+  }
+
+  if (jiRole === "shot-origin") {
+    return `${baseClass} border-2 border-[#c98b34] bg-[#fff8e9] shadow-[0_8px_26px_rgba(185,121,34,0.16)]`;
+  }
+
+  if (jiRole === "impacted") {
+    return `${baseClass} border-2 border-dashed border-[#b96352] bg-[#fff4ef] shadow-[0_8px_26px_rgba(143,39,39,0.14)]`;
   }
 
   if (isSelected) {
@@ -1441,6 +1659,10 @@ function readAgeStart(snapshot: Record<string, unknown>) {
   const ageRange = readAgeRangeFromSnapshot(snapshot);
   const match = ageRange.match(/^(\d+)/);
   return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
+}
+
+function isJiDerivative(derivative: string) {
+  return derivative === "忌" || derivative === "化忌" || derivative.toUpperCase() === "PROBLEM";
 }
 
 function readTransformEntries(snapshot: Record<string, unknown>): TransformEntry[] {
