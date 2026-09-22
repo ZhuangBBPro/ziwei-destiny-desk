@@ -11,7 +11,7 @@ import type {
   ChartTransformRecord,
 } from "@/types";
 import type { ZiweiCreateConfigInput, ZiweiMappedBoard, ZiweiRawBoard } from "@/features/charts/lib/ziweiTypes";
-import { applyWenmoChartPreset } from "@/features/charts/lib/wenmoChartPreset";
+import { WENMO_CHART_PRESET, applyWenmoChartPreset } from "@/features/charts/lib/wenmoChartPreset";
 
 const TEMPLE_CODE_MAP: Record<string, string> = {
   命宫: "life",
@@ -230,7 +230,7 @@ export function mapRawZiweiBoard(board: ZiweiRawBoard): ZiweiMappedBoard {
     target_palace_code: stars.find((star) => star.star_name === starName)?.palace_code ?? null,
     source_heavenly_stem: readName(serializedBoard.config?.yearSky) || null,
     payload_json: {
-      preset: serializedBoard.chartPreset?.id ?? "wenmo-default-2026-07",
+      preset: serializedBoard.chartPreset?.id ?? WENMO_CHART_PRESET.id,
     },
   }));
 
@@ -436,7 +436,7 @@ export function upgradeChartAggregatePreset(aggregate: ChartAggregate) {
     currentPreset &&
     typeof currentPreset === "object" &&
     "id" in currentPreset &&
-    currentPreset.id === "wenmo-default-2026-07"
+    currentPreset.id === WENMO_CHART_PRESET.id
   ) {
     return { aggregate, changed: false };
   }

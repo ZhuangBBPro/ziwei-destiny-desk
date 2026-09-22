@@ -6,7 +6,7 @@ import type {
   PalaceInterpretationCategory,
   PalaceInterpretationHit,
 } from "@/types";
-import { getBirthCalendarLabel } from "@/features/charts/lib/birthDisplay";
+import { getBirthCalendarLabel, getYinYangGenderLabel } from "@/features/charts/lib/birthDisplay";
 import {
   analyzeFlyingJi,
   type FlyingJiAnalysis,
@@ -361,7 +361,7 @@ export function ProfessionalPalaceBoard({
                       </h3>
                     </div>
                     <div className="shrink-0 rounded-xl border border-[#dac9ae] bg-white/70 px-2 py-1 text-right text-[10px] text-[#6e5840] xl:rounded-2xl xl:px-2.5 xl:py-1.5 xl:text-[11px]">
-                      <p>{chart.gender === "male" ? "阳男" : "阴女"}</p>
+                      <p>{getYinYangGenderLabel(chart)}</p>
                       <p className="mt-1">{chart.five_element_class || "五行局待补"}</p>
                     </div>
                   </div>
