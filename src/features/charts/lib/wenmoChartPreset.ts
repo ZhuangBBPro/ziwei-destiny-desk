@@ -1,21 +1,32 @@
 import type { ZiweiRawBoard, ZiweiRawCell } from "@/features/charts/lib/ziweiTypes";
 
+/**
+ * 对齐文墨天机的排盘口径。`id` 是唯一被代码读取的字段：
+ * 它变化时 upgradeChartAggregatePreset 会用新口径重算已存案例，
+ * 所以任何会改变盘面结果的改动都必须同时升版 id。
+ *
+ * 口径清单与实际实现位置（这里只是索引，不是配置，改文字不会改行为）：
+ *
+ *   本文件内
+ *     庙旺利陷      STAR_BRIGHTNESS（《紫微斗数全书》通行表）
+ *     命主          LIFE_MASTER_BY_PALACE_BRANCH（按命宫地支，非年支）
+ *     生年四化      TRADITIONAL_TRANSFORMS_BY_STEM（壬取梁紫左武）
+ *     天伤天使      applyStandardAngelInjury（天伤居交友、天使居疾厄）
+ *
+ *   其他文件
+ *     子初换日      ziweiEngine.normalizeLateZiForLibrary（23:xx 归次日早子时）
+ *     时辰归一      timeGroundMapper.toLibraryName
+ *
+ *   由 fortel-ziweidoushu 决定，本层不干预
+ *     天马取年支、天空、魁钺、长生顺逆、水土同宫
+ *
+ *   已知未实现（勿当成已生效的口径）
+ *     正/副空亡分列  文墨区分旬空/副旬、截空/副截，本层两者同名
+ *     流曜四化      ziweiMapper 的 runtimeContextPreview 恒为 null
+ */
 export const WENMO_CHART_PRESET = Object.freeze({
   id: "wenmo-default-2026-09",
   name: "文墨天机截图口径",
-  options: {
-    pegasus: "year_branch",
-    voidSky: "standard",
-    brightness: "dou_shu_quan_shu",
-    emptyStars: "primary_secondary_pair",
-    angelInjury: "standard",
-    kuiYue: "six_xin_tiger_horse",
-    destinyMaster: "dou_shu_quan_shu",
-    runtimeTransforms: "runtime_heavenly_stem",
-    lifeStagesDirection: "yin_yang_forward_reverse",
-    earthLifeStage: "water_earth_together",
-    lateZi: "next_day",
-  },
 });
 
 const LIFE_MASTER_BY_PALACE_BRANCH: Record<string, string> = {
