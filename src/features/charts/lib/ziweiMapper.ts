@@ -87,8 +87,19 @@ function toPlainJson(input: unknown): Record<string, unknown> {
   ) as Record<string, unknown>;
 }
 
+// 排盘库返回的是繁体宫名（財帛/遷移/事業…），而 TEMPLE_CODE_MAP、解释库、
+// 规则匹配都以简体为键。此处统一归一，避免 palace_code 退化成宫名字符串。
+const TEMPLE_NAME_NORMALIZATION: Record<string, string> = {
+  財帛: "财帛",
+  遷移: "迁移",
+  事業: "事业",
+  官禄: "事业",
+  官祿: "事业",
+};
+
 function normalizeTempleName(input: string) {
-  return input.replace("宮", "宫");
+  const unified = input.replace(/宮/g, "宫").trim();
+  return TEMPLE_NAME_NORMALIZATION[unified] ?? unified;
 }
 
 function normalizeStarList(
@@ -127,6 +138,11 @@ function normalizeStarList(
   });
 }
 
+function dedupeStarsAgainst<T extends { star_name: string }>(list: T[], others: { star_name: string }[][]) {
+  const taken = new Set(others.flat().map((item) => item.star_name));
+  return list.filter((item) => !taken.has(item.star_name));
+}
+
 function readStringRecord(input: unknown) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     return {} as Record<string, string>;
@@ -162,7 +178,12 @@ export function mapRawZiweiBoard(board: ZiweiRawBoard): ZiweiMappedBoard {
     const majorStars = normalizeStarList(cell.majorStars, brightnessByStar, transformByStar);
     const minorStars = normalizeStarList(cell.minorStars, brightnessByStar, transformByStar);
     const miniStars = normalizeStarList(cell.miniStars, brightnessByStar, transformByStar);
-    const miscStars = normalizeStarList(cell.miscStars, brightnessByStar, transformByStar);
+    // 库的 miscStars 是 miniStars 的超集（杂曜 + 博士/岁前/将前三组神煞），
+    // 直接拼接会让同一颗星在“辅”“杂”两栏各出现一次。
+    const miscStars = dedupeStarsAgainst(
+      normalizeStarList(cell.miscStars, brightnessByStar, transformByStar),
+      [minorStars, miniStars],
+    );
     const earthly_branch = readName(cell.ground) || "";
     const heavenly_stem = readName(cell.sky) || "";
     const is_body_palace = temples.some((item) => item === "身宫");
@@ -176,8 +197,8 @@ export function mapRawZiweiBoard(board: ZiweiRawBoard): ZiweiMappedBoard {
       heavenly_stem,
       is_body_palace,
       major_stars_summary: majorStars.map((item) => item.star_name),
-      minor_stars_summary: [...minorStars, ...miniStars].map((item) => item.star_name),
-      sha_stars_summary: miscStars.map((item) => item.star_name),
+      minor_stars_summary: minorStars.map((item) => item.star_name),
+      sha_stars_summary: [...miniStars, ...miscStars].map((item) => item.star_name),
       display_order: index,
       palace_snapshot_json: cellSnapshots[index],
     }));
@@ -188,40 +209,35 @@ export function mapRawZiweiBoard(board: ZiweiRawBoard): ZiweiMappedBoard {
   const stars = palaces.flatMap((palace) => {
     const cell = palace.palace_snapshot_json;
     const brightnessByStar = readStringRecord(cell.starBrightness);
-    return [
-      ...normalizeStarList(cell.majorStars as unknown[] | undefined, brightnessByStar, transformByStar).map((star) => ({
+    const majorStars = normalizeStarList(cell.majorStars as unknown[] | undefined, brightnessByStar, transformByStar);
+    const minorStars = normalizeStarList(cell.minorStars as unknown[] | undefined, brightnessByStar, transformByStar);
+    const miniStars = dedupeStarsAgainst(
+      normalizeStarList(cell.miniStars as unknown[] | undefined, brightnessByStar, transformByStar),
+      [majorStars, minorStars],
+    );
+    // miscStars 是 miniStars 的超集，不去重会给同一颗星写两条 ChartStarRecord。
+    const miscStars = dedupeStarsAgainst(
+      normalizeStarList(cell.miscStars as unknown[] | undefined, brightnessByStar, transformByStar),
+      [majorStars, minorStars, miniStars],
+    );
+
+    return (
+      [
+        [majorStars, "major"],
+        [minorStars, "minor"],
+        [miniStars, "mini"],
+        [miscStars, "misc"],
+      ] as const
+    ).flatMap(([list, star_category]) =>
+      list.map((star) => ({
         palace_code: palace.palace_code,
         star_name: star.star_name,
-        star_category: "major" as const,
+        star_category,
         brightness_level: star.brightness_level,
         transform_type: star.transform_type,
         notes: "",
       })),
-      ...normalizeStarList(cell.minorStars as unknown[] | undefined, brightnessByStar, transformByStar).map((star) => ({
-        palace_code: palace.palace_code,
-        star_name: star.star_name,
-        star_category: "minor" as const,
-        brightness_level: star.brightness_level,
-        transform_type: star.transform_type,
-        notes: "",
-      })),
-      ...normalizeStarList(cell.miniStars as unknown[] | undefined, brightnessByStar, transformByStar).map((star) => ({
-        palace_code: palace.palace_code,
-        star_name: star.star_name,
-        star_category: "mini" as const,
-        brightness_level: star.brightness_level,
-        transform_type: star.transform_type,
-        notes: "",
-      })),
-      ...normalizeStarList(cell.miscStars as unknown[] | undefined, brightnessByStar, transformByStar).map((star) => ({
-        palace_code: palace.palace_code,
-        star_name: star.star_name,
-        star_category: "misc" as const,
-        brightness_level: star.brightness_level,
-        transform_type: star.transform_type,
-        notes: "",
-      })),
-    ];
+    );
   });
   const transforms = Object.entries(derivativeMap).map(([transformType, starName]) => ({
     transform_type: transformType,
@@ -455,12 +471,22 @@ export function upgradeChartAggregatePreset(aggregate: ChartAggregate) {
       cells: snapshot.cells,
       bornStarDerivativeMap: snapshot.bornStarDerivativeMap,
     });
-    const mappedPalaces = new Map(mapped.palaces.map((palace) => [palace.palace_code, palace]));
+    // 旧盘可能存着退化的 palace_code（如“財帛”），拿它当键会匹配不上而漏修。
+    // 地支在一张盘里唯一且稳定，优先按地支对齐，再退回 palace_code。
+    const mappedByBranch = new Map(mapped.palaces.map((palace) => [palace.earthly_branch, palace]));
+    const mappedByCode = new Map(mapped.palaces.map((palace) => [palace.palace_code, palace]));
     const palaces = aggregate.palaces.map((palace) => {
-      const corrected = mappedPalaces.get(palace.palace_code);
+      const isBodyOnlyRecord =
+        palace.palace_code === "body" ||
+        palace.palace_name === BODY_TEMPLE_NAME ||
+        palace.palace_name === "身宮";
+      const corrected = isBodyOnlyRecord
+        ? undefined
+        : mappedByBranch.get(palace.earthly_branch) ?? mappedByCode.get(palace.palace_code);
       return corrected
         ? {
             ...palace,
+            palace_code: corrected.palace_code,
             palace_name: corrected.palace_name,
             earthly_branch: corrected.earthly_branch,
             heavenly_stem: corrected.heavenly_stem,

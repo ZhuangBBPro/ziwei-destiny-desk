@@ -28,7 +28,12 @@ function toLibraryName(name: TimeGroundName) {
   const map: Record<TimeGroundName, string> = {
     "早子时": "早子時",
     "夜子时": "夜子時",
-    "子时": "夜子時",
+    // 本应用统一按「子初换日」：23:00 之后的钟点会被改写成次日 00:xx（见
+    // ziweiEngine.normalizeLateZiForLibrary），所以钟点输入永远落在早子時。
+    // 笼统的「子时」若映射到夜子時，会得到一张钟点输入永远排不出来的盘；
+    // 且「X月X日子时」的日常读法就是该日 00:00-00:59，故与早子時对齐。
+    // 需要 23 点后的夜子时，请显式输入「夜子时」或 23:xx。
+    "子时": "早子時",
     "丑时": "丑時",
     "寅时": "寅時",
     "卯时": "卯時",
